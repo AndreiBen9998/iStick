@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "387688156628",
+    "project_id": "istickapp",
+    "storage_bucket": "istickapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:387688156628:android:6890ad24c5fa25747f5a41",
+        "android_client_info": {
+          "package_name": "istick.app.beta"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAMbp1Kn33SNn490dkBCmipDbhezrrjKb0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

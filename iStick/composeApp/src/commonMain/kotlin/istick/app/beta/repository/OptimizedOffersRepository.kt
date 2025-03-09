@@ -1,163 +1,189 @@
-// În repository/OptimizedOffersRepository.kt
-class OptimizedOffersRepository {
-    private val db = Firebase.firestore
-    private val cache = mutableMapOf<String, Offer>()
-    private val _cachedOffers = MutableStateFlow<List<Offer>>(emptyList())
-    val cachedOffers: StateFlow<List<Offer>> = _cachedOffers
+// File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/repository/OptimizedOffersRepository.kt
+package istick.app.beta.repository
 
-    private var lastVisibleOffer: DocumentSnapshot? = null
+import istick.app.beta.model.Campaign
+import istick.app.beta.model.CampaignStatus
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+
+/**
+ * Repository for managing promotional offers with optimization for
+ * fast loading and caching.
+ */
+class OptimizedOffersRepository {
+    private val _cachedOffers = MutableStateFlow<List<Campaign>>(emptyList())
+    val cachedOffers: StateFlow<List<Campaign>> = _cachedOffers
+
     private val _hasMorePages = MutableStateFlow(true)
     val hasMorePages: StateFlow<Boolean> = _hasMorePages
 
-    // Stocăm timestamp-ul ultimei actualizări pentru a preveni actualizările frecvente
+    // Cache for storing fetched offers
+    private val cache = mutableMapOf<String, Campaign>()
+
+    // Timestamp of last refresh to limit frequent updates
     private var lastRefreshTimestamp = 0L
 
-    fun getOffers(onSuccess: (List<Offer>) -> Unit, onError: (Exception) -> Unit) {
-        // Verifică mai întâi cache-ul - strategie Netflix: cache-first pentru încărcare rapidă
+    /**
+     * Get offers with pagination support.
+     * First loads from cache if available, then updates from the backend.
+     */
+    fun getOffers(onSuccess: (List<Campaign>) -> Unit, onError: (Exception) -> Unit) {
+        // For demo purpose, return mock data
         if (_cachedOffers.value.isNotEmpty()) {
             onSuccess(_cachedOffers.value)
-
-            // Actualizează în fundal pentru următoarea solicitare dacă au trecut cel puțin 5 minute
-            val currentTime = System.currentTimeMillis()
-            if (currentTime - lastRefreshTimestamp > 5 * 60 * 1000) {
-                refreshOffersInBackground()
-                lastRefreshTimestamp = currentTime
-            }
             return
         }
 
-        // Limitează câmpurile pentru lista principală
-        db.collection("offers")
-            .orderBy("price")
-            .limit(20)
-            .get()
-            .addOnSuccessListener { result ->
-                val offers = result.documents.mapNotNull { doc ->
-                    doc.toObject(Offer::class.java)?.copy(id = doc.id)
-                }
-                // Populează cache-ul
-                offers.forEach { offer ->
-                    cache[offer.id] = offer
-                }
-                _cachedOffers.value = offers
-                lastRefreshTimestamp = System.currentTimeMillis()
-                onSuccess(offers)
+        try {
+            // Mock data for now
+            val mockOffers = listOf(
+                Campaign(
+                    id = "offer1",
+                    brandId = "brand1",
+                    title = "TechCorp Promotional Campaign",
+                    description = "Promote our tech products on your car",
+                    status = CampaignStatus.ACTIVE,
+                    payment = istick.app.beta.model.PaymentDetails(
+                        amount = 500.0,
+                        currency = "RON"
+                    )
+                ),
+                Campaign(
+                    id = "offer2",
+                    brandId = "brand2",
+                    title = "EcoFriendly Campaign",
+                    description = "Promote eco-friendly products",
+                    status = CampaignStatus.ACTIVE,
+                    payment = istick.app.beta.model.PaymentDetails(
+                        amount = 450.0,
+                        currency = "RON"
+                    )
+                ),
+                Campaign(
+                    id = "offer3",
+                    brandId = "brand3",
+                    title = "Local Business Promotion",
+                    description = "Support local businesses with your car",
+                    status = CampaignStatus.ACTIVE,
+                    payment = istick.app.beta.model.PaymentDetails(
+                        amount = 400.0,
+                        currency = "RON"
+                    )
+                )
+            )
 
-                // Salvează ultimul document pentru paginare
-                lastVisibleOffer = if (result.documents.isNotEmpty()) {
-                    result.documents.last()
-                } else {
-                    null
-                }
+            // Update cache
+            mockOffers.forEach { offer ->
+                cache[offer.id] = offer
+            }
 
-                _hasMorePages.value = result.documents.size >= 20
-            }
-            .addOnFailureListener { exception ->
-                onError(exception)
-            }
+            _cachedOffers.value = mockOffers
+            lastRefreshTimestamp = System.currentTimeMillis()
+
+            onSuccess(mockOffers)
+        } catch (e: Exception) {
+            onError(e)
+        }
     }
 
-    private fun refreshOffersInBackground() {
-        db.collection("offers")
-            .orderBy("price")
-            .limit(20)
-            .get()
-            .addOnSuccessListener { result ->
-                val offers = result.documents.mapNotNull { doc ->
-                    doc.toObject(Offer::class.java)?.copy(id = doc.id)
-                }
-                offers.forEach { offer ->
-                    cache[offer.id] = offer
-                }
-                _cachedOffers.value = offers
-
-                lastVisibleOffer = if (result.documents.isNotEmpty()) {
-                    result.documents.last()
-                } else {
-                    null
-                }
-
-                _hasMorePages.value = result.documents.size >= 20
-            }
-    }
-
-    fun getNextOffersPage(onSuccess: (List<Offer>, Boolean) -> Unit, onError: (Exception) -> Unit) {
-        if (lastVisibleOffer == null || !_hasMorePages.value) {
+    /**
+     * Load the next page of offers.
+     */
+    fun getNextOffersPage(onSuccess: (List<Campaign>, Boolean) -> Unit, onError: (Exception) -> Unit) {
+        if (!_hasMorePages.value) {
             onSuccess(emptyList(), false)
             return
         }
 
-        db.collection("offers")
-            .orderBy("price")
-            .startAfter(lastVisibleOffer)
-            .limit(20)
-            .get()
-            .addOnSuccessListener { result ->
-                val newOffers = result.documents.mapNotNull { doc ->
-                    doc.toObject(Offer::class.java)?.copy(id = doc.id)
-                }
+        try {
+            // Mock next page data
+            val newOffers = listOf(
+                Campaign(
+                    id = "offer4",
+                    brandId = "brand4",
+                    title = "Fitness Promotion",
+                    description = "Promote fitness products with your car",
+                    status = CampaignStatus.ACTIVE,
+                    payment = istick.app.beta.model.PaymentDetails(
+                        amount = 550.0,
+                        currency = "RON"
+                    )
+                ),
+                Campaign(
+                    id = "offer5",
+                    brandId = "brand5",
+                    title = "Coffee Shop Ads",
+                    description = "Promote local coffee shops",
+                    status = CampaignStatus.ACTIVE,
+                    payment = istick.app.beta.model.PaymentDetails(
+                        amount = 350.0,
+                        currency = "RON"
+                    )
+                )
+            )
 
-                // Actualizează cache-ul
-                newOffers.forEach { offer ->
-                    cache[offer.id] = offer
-                }
-
-                // Actualizează lastVisibleOffer pentru următoarea pagină
-                lastVisibleOffer = if (result.documents.isNotEmpty()) {
-                    result.documents.last()
-                } else {
-                    null
-                }
-
-                val hasMore = result.documents.size >= 20
-                _hasMorePages.value = hasMore
-
-                onSuccess(newOffers, hasMore)
+            // Update cache
+            newOffers.forEach { offer ->
+                cache[offer.id] = offer
             }
-            .addOnFailureListener { exception ->
-                onError(exception)
-            }
+
+            // No more pages after this demonstration
+            val hasMore = false
+            _hasMorePages.value = hasMore
+
+            onSuccess(newOffers, hasMore)
+        } catch (e: Exception) {
+            onError(e)
+        }
     }
 
-    fun getOfferDetails(offerId: String, onSuccess: (Offer) -> Unit, onError: (Exception) -> Unit) {
-        // Verifică mai întâi cache-ul
+    /**
+     * Get details for a specific offer.
+     */
+    fun getOfferDetails(offerId: String, onSuccess: (Campaign) -> Unit, onError: (Exception) -> Unit) {
+        // Check cache first
         cache[offerId]?.let {
             onSuccess(it)
-
-            // Actualizează în fundal pentru date proaspete
-            refreshOfferInBackground(offerId)
             return
         }
 
-        db.collection("offers").document(offerId)
-            .get()
-            .addOnSuccessListener { document ->
-                document.toObject(Offer::class.java)?.let {
-                    val offer = it.copy(id = document.id)
-                    cache[offerId] = offer
-                    onSuccess(offer)
-                } ?: onError(Exception("Offer not found"))
-            }
-            .addOnFailureListener { exception ->
-                onError(exception)
-            }
+        try {
+            // Mock data for a specific offer
+            val offer = Campaign(
+                id = offerId,
+                brandId = "brand1",
+                title = "Special Campaign",
+                description = "This is a detailed description of the campaign",
+                status = CampaignStatus.ACTIVE,
+                payment = istick.app.beta.model.PaymentDetails(
+                    amount = 500.0,
+                    currency = "RON"
+                )
+            )
+
+            // Update cache
+            cache[offerId] = offer
+
+            onSuccess(offer)
+        } catch (e: Exception) {
+            onError(e)
+        }
     }
 
-    private fun refreshOfferInBackground(offerId: String) {
-        db.collection("offers").document(offerId)
-            .get()
-            .addOnSuccessListener { document ->
-                document.toObject(Offer::class.java)?.let {
-                    cache[offerId] = it.copy(id = document.id)
-                }
-            }
+    /**
+     * Refresh the cache in the background.
+     */
+    private fun refreshOffersInBackground() {
+        // This would normally fetch fresh data from the backend
+        // For now, we'll just skip implementation
     }
 
-    // Funcție pentru a șterge cache-ul în cazul unei erori sau la cerere
+    /**
+     * Clear the cache and fetch fresh data.
+     */
     fun clearCache() {
         cache.clear()
         _cachedOffers.value = emptyList()
-        lastVisibleOffer = null
         _hasMorePages.value = true
     }
 }

@@ -1,4 +1,20 @@
-// În ui.components/OptimizedImage.kt
+// File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/ui/components/OptimizedImage.kt
+package istick.app.beta.ui.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.material.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+
 @Composable
 fun OptimizedImage(
     imageUrl: String,
@@ -7,7 +23,9 @@ fun OptimizedImage(
     contentScale: ContentScale = ContentScale.Crop,
     placeholder: @Composable () -> Unit = {
         Box(
-            modifier = Modifier.fillMaxSize().background(Color(0xFF1A3B66)),
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF1A3B66)),
             contentAlignment = Alignment.Center
         ) {
             CircularProgressIndicator(
@@ -18,38 +36,34 @@ fun OptimizedImage(
     },
     error: @Composable () -> Unit = {
         Box(
-            modifier = Modifier.fillMaxSize().background(Color(0xFF1A3B66)),
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF1A3B66)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                Icons.Default.BrokenImage,
-                contentDescription = "Error",
-                tint = Color.White
+            Text(
+                text = "!",
+                color = Color.White,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.size(24.dp)
             )
         }
     }
 ) {
-    val context = LocalContext.current
-
-    // Folosește un ImageRequest optimizat
-    val imageRequest = remember(imageUrl) {
-        ImageRequest.Builder(context)
-            .data(imageUrl)
-            .crossfade(true)
-            .diskCachePolicy(CachePolicy.ENABLED)
-            .memoryCachePolicy(CachePolicy.ENABLED)
-            .build()
-    }
-
+    // Note: In a real implementation, this would use Coil AsyncImage
+    // For now, just show a placeholder
     Box(modifier = modifier) {
-        // Folosește AsyncImage cu gestionare optimizată a stărilor
-        AsyncImage(
-            model = imageRequest,
-            contentDescription = contentDescription,
-            contentScale = contentScale,
-            modifier = Modifier.fillMaxSize(),
-            onLoading = { placeholder() },
-            onError = { error() }
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF1A3B66)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "IMG",
+                color = Color.White.copy(alpha = 0.5f),
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }

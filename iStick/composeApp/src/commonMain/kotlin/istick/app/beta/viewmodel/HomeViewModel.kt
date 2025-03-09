@@ -1,62 +1,127 @@
-// În viewmodel/HomeViewModel.kt
+// File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/viewmodel/HomeViewModel.kt
+package istick.app.beta.viewmodel
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import istick.app.beta.model.Campaign
+import istick.app.beta.model.User
+import istick.app.beta.model.UserType
+import istick.app.beta.repository.OptimizedOffersRepository
+import istick.app.beta.repository.UserRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+
 class HomeViewModel(
-    private val offersRepository: OptimizedOffersRepository
+    private val offersRepository: OptimizedOffersRepository = OptimizedOffersRepository(),
+    private val userRepository: UserRepository
 ) : ViewModel() {
-    private val _offers = MutableStateFlow<List<Offer>>(emptyList())
-    val offers: StateFlow<List<Offer>> = _offers
+    // UI state for campaigns
+    private val _campaigns = MutableStateFlow<List<Campaign>>(emptyList())
+    val campaigns: StateFlow<List<Campaign>> = _campaigns.asStateFlow()
 
+    // Loading state
     private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    private val _isLoadingNextPage = MutableStateFlow(false)
-    val isLoadingNextPage: StateFlow<Boolean> = _isLoadingNextPage
-
+    // Error state
     private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error
+    val error: StateFlow<String?> = _error.asStateFlow()
 
-    private val _hasMorePages = MutableStateFlow(true)
-    val hasMorePages: StateFlow<Boolean> = _hasMorePages
+    // Current user
+    private val _currentUser = MutableStateFlow<User?>(null)
+    val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
 
-    fun loadOffers() {
+    init {
+        loadUser()
+        loadCampaigns()
+    }
+
+    /**
+     * Load the current user
+     */
+    private fun loadUser() {
+        viewModelScope.launch {
+            userRepository.getCurrentUser().fold(
+                onSuccess = { user ->
+                    _currentUser.value = user
+                },
+                onFailure = { error ->
+                    _error.value = "Failed to load user: ${error.message}"
+                }
+            )
+        }
+    }
+
+    /**
+     * Load active campaigns
+     */
+    fun loadCampaigns() {
         if (_isLoading.value) return
 
-        _isLoading.value = true
-        _error.value = null
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
 
-        offersRepository.getOffers(
-            onSuccess = { offersList ->
-                _offers.value = offersList
-                _isLoading.value = false
-            },
-            onError = { e ->
-                _error.value = e.message
-                _isLoading.value = false
+            // Check user type to determine what to load
+            val userType = _currentUser.value?.type
+
+            if (userType == UserType.CAR_OWNER || userType == null) {
+                // Car owners see available campaigns
+                offersRepository.getOffers(
+                    onSuccess = { campaignList ->
+                        _campaigns.value = campaignList
+                        _isLoading.value = false
+                    },
+                    onError = { error ->
+                        _error.value = "Failed to load campaigns: ${error.message}"
+                        _isLoading.value = false
+                    }
+                )
+            } else if (userType == UserType.BRAND) {
+                // Brands see their own campaigns
+                offersRepository.getOffers(
+                    onSuccess = { campaignList ->
+                        _campaigns.value = campaignList.filter { it.brandId == _currentUser.value?.id }
+                        _isLoading.value = false
+                    },
+                    onError = { error ->
+                        _error.value = "Failed to load your campaigns: ${error.message}"
+                        _isLoading.value = false
+                    }
+                )
             }
-        )
+        }
     }
 
+    /**
+     * Load the next page of campaigns
+     */
     fun loadNextPage() {
-        if (_isLoadingNextPage.value || !_hasMorePages.value) return
+        if (_isLoading.value) return
 
-        _isLoadingNextPage.value = true
+        viewModelScope.launch {
+            _isLoading.value = true
 
-        offersRepository.getNextOffersPage(
-            onSuccess = { newOffers, hasMore ->
-                val currentList = _offers.value.toMutableList()
-                currentList.addAll(newOffers)
-                _offers.value = currentList
-                _hasMorePages.value = hasMore
-                _isLoadingNextPage.value = false
-            },
-            onError = { e ->
-                _error.value = e.message
-                _isLoadingNextPage.value = false
-            }
-        )
+            offersRepository.getNextOffersPage(
+                onSuccess = { newCampaigns, hasMore ->
+                    _campaigns.value = _campaigns.value + newCampaigns
+                    _isLoading.value = false
+                },
+                onError = { error ->
+                    _error.value = "Failed to load more campaigns: ${error.message}"
+                    _isLoading.value = false
+                }
+            )
+        }
     }
 
-    fun refreshOffers() {
+    /**
+     * Refresh campaigns
+     */
+    fun refresh() {
         offersRepository.clearCache()
-        loadOffers()
+        loadCampaigns()
     }
 }

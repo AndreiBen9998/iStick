@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     id("com.google.gms.google-services")
+    kotlin("plugin.serialization") version "2.1.0"
 }
 
 kotlin {
@@ -28,7 +29,7 @@ kotlin {
             isStatic = true
         }
     }
-    
+
     sourceSets {
         androidMain.dependencies {
             implementation(compose.preview)
@@ -43,10 +44,13 @@ kotlin {
             implementation(compose.components.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.runtime.compose)
-            
+
             // Firebase multiplatform libraries
             implementation("dev.gitlive:firebase-auth:1.11.0")
             implementation("dev.gitlive:firebase-storage:1.11.0")
+
+            // Add this line:
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
         }
     }
 }

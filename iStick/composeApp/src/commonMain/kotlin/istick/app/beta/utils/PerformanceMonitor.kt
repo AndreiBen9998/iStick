@@ -1,4 +1,10 @@
-// În utils/PerformanceMonitor.kt
+// File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/utils/PerformanceMonitor.kt
+package istick.app.beta.utils
+
+import android.content.Context
+import android.util.Log
+import android.app.ActivityManager
+
 class PerformanceMonitor(private val context: Context) {
     private val traces = mutableMapOf<String, Any?>()
     private val startTimes = mutableMapOf<String, Long>()

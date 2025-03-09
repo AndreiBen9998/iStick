@@ -19,12 +19,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import istick.app.beta.model.Car
 import istick.app.beta.utils.PerformanceMonitor
 import istick.app.beta.viewmodel.CarManagementViewModel
-import kotlinx.coroutines.launch
 
 @Composable
 fun CarManagementScreen(
@@ -43,22 +41,9 @@ fun CarManagementScreen(
     }
 
     // Get state from view model
-    val cars = remember { mutableStateOf(emptyList<Car>()) }
-    val isLoading = remember { mutableStateOf(false) }
-    val error = remember { mutableStateOf<String?>(null) }
-
-    // Collect state values manually
-    LaunchedEffect(viewModel) {
-        viewModel.cars.collect { cars.value = it }
-    }
-
-    LaunchedEffect(viewModel) {
-        viewModel.isLoading.collect { isLoading.value = it }
-    }
-
-    LaunchedEffect(viewModel) {
-        viewModel.error.collect { error.value = it }
-    }
+    val cars by viewModel.cars.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
 
     Scaffold(
         topBar = {
@@ -89,7 +74,7 @@ fun CarManagementScreen(
                 .padding(padding)
                 .background(Color(0xFF0F2030))
         ) {
-            if (isLoading.value && cars.value.isEmpty()) {
+            if (isLoading && cars.isEmpty()) {
                 // Show loading indicator for initial load
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -100,7 +85,7 @@ fun CarManagementScreen(
                         modifier = Modifier.size(48.dp)
                     )
                 }
-            } else if (cars.value.isEmpty()) {
+            } else if (cars.isEmpty()) {
                 // Empty state
                 Column(
                     modifier = Modifier
@@ -149,7 +134,7 @@ fun CarManagementScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(
-                        items = cars.value,
+                        items = cars,
                         key = { it.id }
                     ) { car ->
                         CarItem(

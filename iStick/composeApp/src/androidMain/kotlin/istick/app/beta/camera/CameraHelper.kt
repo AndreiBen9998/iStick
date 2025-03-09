@@ -1,3 +1,4 @@
+// File: iStick/composeApp/src/androidMain/kotlin/istick/app/beta/camera/CameraHelper.kt
 package istick.app.beta.camera
 
 import android.Manifest
@@ -15,19 +16,19 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import java.io.ByteArrayOutputStream
 
-class CameraHelper(private val activity: Activity) {
+actual class CameraHelper(private val activity: Activity) {
     companion object {
         private const val CAMERA_PERMISSION_CODE = 100
     }
 
-    fun checkCameraPermission(): Boolean {
+    actual fun checkCameraPermission(): Boolean {
         return ContextCompat.checkSelfPermission(
             activity,
             Manifest.permission.CAMERA
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    fun requestCameraPermission() {
+    actual fun requestCameraPermission() {
         ActivityCompat.requestPermissions(
             activity,
             arrayOf(Manifest.permission.CAMERA),
@@ -41,18 +42,16 @@ class CameraHelper(private val activity: Activity) {
         return stream.toByteArray()
     }
 
-    // Add a method to launch the camera
+    // Launch camera method
     fun launchCamera(onResult: (Bitmap?) -> Unit) {
         val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
         activity.startActivityForResult(intent, CAMERA_PERMISSION_CODE)
-        // Note: This method is deprecated, but we'll keep it for compatibility
-        // In a production app, you should use the ActivityResultLauncher approach
     }
 }
 
 // This is the composable function that your app is already using
 @Composable
-fun rememberCameraLauncher(onPhotoTaken: (ByteArray) -> Unit): () -> Unit {
+actual fun rememberCameraLauncher(onPhotoTaken: (ByteArray) -> Unit): () -> Unit {
     val context = LocalContext.current
 
     // Create a camera launcher using the new Activity Result API

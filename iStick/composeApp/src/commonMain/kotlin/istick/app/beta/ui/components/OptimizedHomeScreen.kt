@@ -22,8 +22,8 @@ import androidx.compose.ui.unit.dp
 import istick.app.beta.model.Campaign
 import istick.app.beta.utils.PerformanceMonitor
 import istick.app.beta.viewmodel.HomeViewModel
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
@@ -37,23 +37,10 @@ fun HomeScreen(
         performanceMonitor.startTrace("home_screen_render")
     }
 
-    // Using collectAsState from androidx.compose.runtime instead
-    val offers = remember { mutableStateOf(emptyList<Campaign>()) }
-    val isLoading = remember { mutableStateOf(false) }
-    val error = remember { mutableStateOf<String?>(null) }
-
-    // Collect state values manually
-    LaunchedEffect(viewModel) {
-        viewModel.campaigns.collect { offers.value = it }
-    }
-
-    LaunchedEffect(viewModel) {
-        viewModel.isLoading.collect { isLoading.value = it }
-    }
-
-    LaunchedEffect(viewModel) {
-        viewModel.error.collect { error.value = it }
-    }
+    // Using collectAsState for state collection
+    val offers by viewModel.campaigns.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
 
     // Layout principal
     Column(
@@ -71,7 +58,7 @@ fun HomeScreen(
         )
 
         // Display loader during initial loading
-        if (isLoading.value && offers.value.isEmpty()) {
+        if (isLoading && offers.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -94,7 +81,7 @@ fun HomeScreen(
                     contentPadding = PaddingValues(8.dp)
                 ) {
                     items(
-                        items = offers.value,
+                        items = offers,
                         key = { it.id }
                     ) { campaign ->
                         OfferCard(
@@ -103,7 +90,7 @@ fun HomeScreen(
                         )
                     }
 
-                    if (isLoading.value && offers.value.isNotEmpty()) {
+                    if (isLoading && offers.isNotEmpty()) {
                         item {
                             Box(
                                 modifier = Modifier
@@ -141,7 +128,7 @@ fun HomeScreen(
                 }
 
                 // Error display
-                if (error.value != null) {
+                if (error != null) {
                     Card(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -163,7 +150,7 @@ fun HomeScreen(
                             Spacer(modifier = Modifier.width(16.dp))
 
                             Text(
-                                text = error.value ?: "",
+                                text = error ?: "",
                                 color = Color.White,
                                 modifier = Modifier.weight(1f)
                             )

@@ -5,7 +5,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
-import istick.app.beta.utils.PerformanceMonitor
 
 fun Modifier.measureRenderTime(
     componentName: String,

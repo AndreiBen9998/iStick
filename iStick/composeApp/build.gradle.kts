@@ -18,7 +18,7 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
-    
+
     listOf(
         iosX64(),
         iosArm64(),
@@ -45,11 +45,10 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.runtime.compose)
 
-            // Firebase multiplatform libraries
-            implementation("dev.gitlive:firebase-auth:1.11.0")
-            implementation("dev.gitlive:firebase-storage:1.11.0")
+            // Updated to GitLive versions that are available in the repository
+            implementation("dev.gitlive:firebase-auth:1.11.1")
+            implementation("dev.gitlive:firebase-storage:1.11.1")
 
-            // Add this line:
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
         }
     }
@@ -84,10 +83,9 @@ android {
 
 dependencies {
     debugImplementation(compose.uiTooling)
+
+    // Remove duplicate implementations - the GitLive libraries should be enough
     implementation(platform("com.google.firebase:firebase-bom:33.10.0"))
-    implementation("com.google.firebase:firebase-auth")
-    implementation("com.google.firebase:firebase-storage")
-    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-analytics-ktx")
     implementation("androidx.activity:activity-compose:1.8.0")
-    implementation("dev.gitlive:firebase-auth:1.8.0")
 }

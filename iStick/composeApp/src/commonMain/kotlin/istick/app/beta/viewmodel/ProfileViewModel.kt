@@ -1,4 +1,3 @@
-
 // File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/viewmodel/ProfileViewModel.kt
 package istick.app.beta.viewmodel
 
@@ -11,6 +10,7 @@ import istick.app.beta.repository.UserRepository
 import istick.app.beta.storage.StorageRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 class ProfileViewModel(
     private val authRepository: AuthRepository,
@@ -20,38 +20,38 @@ class ProfileViewModel(
 ) : ViewModel() {
     // Current user
     private val _user = MutableStateFlow<User?>(null)
-    val user: StateFlow<User?> = _user
-    
+    val user: StateFlow<User?> = _user.asStateFlow()
+
     // User's cars (if car owner)
     private val _cars = MutableStateFlow<List<Car>>(emptyList())
-    val cars: StateFlow<List<Car>> = _cars
-    
+    val cars: StateFlow<List<Car>> = _cars.asStateFlow()
+
     // Loading state
     private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading
-    
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
     // Error state
     private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error
-    
+    val error: StateFlow<String?> = _error.asStateFlow()
+
     init {
         loadProfile()
     }
-    
+
     // Function to load profile
     fun loadProfile() {
         _isLoading.value = true
         _error.value = null
-        
+
         userRepository.getCurrentUser().fold(
             onSuccess = { user ->
                 _user.value = user
-                
+
                 // If car owner, load cars
                 if (user?.type == istick.app.beta.model.UserType.CAR_OWNER) {
                     loadCars(user.id)
                 }
-                
+
                 _isLoading.value = false
             },
             onFailure = { error ->
@@ -60,7 +60,7 @@ class ProfileViewModel(
             }
         )
     }
-    
+
     // Function to load cars
     private fun loadCars(userId: String) {
         carRepository.fetchUserCars(userId).fold(
@@ -72,15 +72,15 @@ class ProfileViewModel(
             }
         )
     }
-    
+
     // Function to upload profile picture
     fun uploadProfilePicture(imageBytes: ByteArray) {
         _isLoading.value = true
         _error.value = null
-        
+
         val userId = _user.value?.id ?: return
         val fileName = "profile_${userId}_${System.currentTimeMillis()}.jpg"
-        
+
         storageRepository.uploadImage(imageBytes, "profiles/$fileName").fold(
             onSuccess = { imageUrl ->
                 userRepository.updateUserProfilePicture(userId, imageUrl).fold(
@@ -100,11 +100,11 @@ class ProfileViewModel(
             }
         )
     }
-    
+
     // Function to sign out
     fun signOut(onComplete: () -> Unit) {
         _isLoading.value = true
-        
+
         try {
             authRepository.signOut()
             onComplete()

@@ -261,10 +261,7 @@ fun LoginScreen(
 
                 Text(
                     text = "Sign up",
-                    color = Color(0xFF2962FF),
-                    modifier = Modifier.clickable {
-                        // To be implemented - navigate to sign up screen
-                    }
+                    color = Color(0xFF2962FF)
                 )
             }
         }

@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import istick.app.beta.model.Brand
@@ -35,10 +36,10 @@ fun ProfileScreen(
     }
 
     // Get state from view model
-    val user by remember { viewModel.user }
-    val cars by remember { viewModel.cars }
-    val isLoading by remember { viewModel.isLoading }
-    val error by remember { viewModel.error }
+    val user by viewModel.user.collectAsState()
+    val cars by viewModel.cars.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
 
     Box(
         modifier = modifier
@@ -65,16 +66,16 @@ fun ProfileScreen(
                     tint = Color.Red,
                     modifier = Modifier.size(48.dp)
                 )
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 Text(
                     text = error ?: "Unknown error",
                     color = Color.White
                 )
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 Button(
                     onClick = { viewModel.loadProfile() },
                     colors = ButtonDefaults.buttonColors(
@@ -100,9 +101,9 @@ fun ProfileScreen(
                         }
                     }
                 )
-                
+
                 Spacer(modifier = Modifier.height(24.dp))
-                
+
                 // Profile details based on user type
                 user?.let { currentUser ->
                     when (currentUser) {
@@ -151,7 +152,7 @@ private fun ProfileHeader(
                 // Here you would use Coil or another image loading library
                 // For now we just show a placeholder
                 Text(
-                    text = user.name.first().toString(),
+                    text = user.name.firstOrNull()?.toString() ?: "?",
                     style = MaterialTheme.typography.h3,
                     color = Color.White
                 )
@@ -164,9 +165,9 @@ private fun ProfileHeader(
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         // User name
         Text(
             text = user?.name ?: "User",
@@ -174,18 +175,18 @@ private fun ProfileHeader(
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
-        
+
         Spacer(modifier = Modifier.height(4.dp))
-        
+
         // User email
         Text(
             text = user?.email ?: "",
             style = MaterialTheme.typography.body1,
             color = Color.Gray
         )
-        
+
         Spacer(modifier = Modifier.height(4.dp))
-        
+
         // User type badge
         user?.type?.let { userType ->
             Card(
@@ -201,9 +202,9 @@ private fun ProfileHeader(
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         // Logout button
         OutlinedButton(
             onClick = onLogout,
@@ -219,9 +220,9 @@ private fun ProfileHeader(
                 Icons.Default.ExitToApp,
                 contentDescription = null
             )
-            
+
             Spacer(modifier = Modifier.width(8.dp))
-            
+
             Text("Logout")
         }
     }
@@ -241,36 +242,36 @@ private fun CarOwnerDetails(
             color = Color.White,
             fontWeight = FontWeight.Bold
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         // City
         DetailItem(
             icon = Icons.Default.LocationOn,
             label = "City",
             value = carOwner.city.ifEmpty { "Not specified" }
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         // Daily driving distance
         DetailItem(
             icon = Icons.Default.Speed,
             label = "Daily Driving",
             value = "${carOwner.dailyDrivingDistance} km"
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         // Rating
         DetailItem(
             icon = Icons.Default.Star,
             label = "Rating",
             value = "${carOwner.rating} (${carOwner.reviewCount} reviews)"
         )
-        
+
         Spacer(modifier = Modifier.height(24.dp))
-        
+
         // Cars section
         Text(
             text = "Your Cars (${cars.size})",
@@ -278,9 +279,9 @@ private fun CarOwnerDetails(
             color = Color.White,
             fontWeight = FontWeight.Bold
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         // List of cars
         if (cars.isEmpty()) {
             Card(
@@ -314,9 +315,9 @@ private fun CarOwnerDetails(
                             contentDescription = null,
                             tint = Color.White
                         )
-                        
+
                         Spacer(modifier = Modifier.width(16.dp))
-                        
+
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "${car.make} ${car.model}",
@@ -324,7 +325,7 @@ private fun CarOwnerDetails(
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold
                             )
-                            
+
                             Text(
                                 text = "${car.year} • ${car.licensePlate}",
                                 style = MaterialTheme.typography.body2,
@@ -351,45 +352,45 @@ private fun BrandDetails(
             color = Color.White,
             fontWeight = FontWeight.Bold
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         // Company name
         DetailItem(
             icon = Icons.Default.Business,
             label = "Company",
             value = brand.companyDetails.companyName.ifEmpty { "Not specified" }
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         // Industry
         DetailItem(
             icon = Icons.Default.Category,
             label = "Industry",
             value = brand.companyDetails.industry.ifEmpty { "Not specified" }
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         // Website
         DetailItem(
             icon = Icons.Default.Language,
             label = "Website",
             value = brand.companyDetails.website.ifEmpty { "Not specified" }
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         // Rating
         DetailItem(
             icon = Icons.Default.Star,
             label = "Rating",
             value = "${brand.rating} (${brand.reviewCount} reviews)"
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         // Description
         Text(
             text = "Description",
@@ -397,9 +398,9 @@ private fun BrandDetails(
             color = Color.White,
             fontWeight = FontWeight.Bold
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         Card(
             backgroundColor = Color(0xFF1A3B66),
             modifier = Modifier.fillMaxWidth()
@@ -411,9 +412,9 @@ private fun BrandDetails(
                 modifier = Modifier.padding(16.dp)
             )
         }
-        
+
         Spacer(modifier = Modifier.height(24.dp))
-        
+
         // Campaigns section (just a placeholder)
         Text(
             text = "Your Campaigns (${brand.campaigns.size})",
@@ -421,9 +422,9 @@ private fun BrandDetails(
             color = Color.White,
             fontWeight = FontWeight.Bold
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         // Placeholder for campaigns
         if (brand.campaigns.isEmpty()) {
             Card(
@@ -446,7 +447,7 @@ private fun BrandDetails(
 
 @Composable
 private fun DetailItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     label: String,
     value: String,
     modifier: Modifier = Modifier
@@ -461,16 +462,16 @@ private fun DetailItem(
             tint = Color.Gray,
             modifier = Modifier.size(20.dp)
         )
-        
+
         Spacer(modifier = Modifier.width(8.dp))
-        
+
         Text(
             text = label,
             style = MaterialTheme.typography.body2,
             color = Color.Gray,
             modifier = Modifier.width(80.dp)
         )
-        
+
         Text(
             text = value,
             style = MaterialTheme.typography.body1,

@@ -24,7 +24,7 @@ actual class PerformanceMonitor actual constructor(context: Any?) {
             startTimes[name]?.let { startTime ->
                 val duration = System.currentTimeMillis() - startTime
                 NSLog("PerformanceMonitor: Trace $name completed in $duration ms")
-                
+
                 // Store the trace duration
                 traces[name] = duration
             }
@@ -45,14 +45,14 @@ actual class PerformanceMonitor actual constructor(context: Any?) {
         NSLog("PerformanceMonitor: iOS system name: ${UIDevice.currentDevice.systemName}")
         NSLog("PerformanceMonitor: iOS system version: ${UIDevice.currentDevice.systemVersion}")
     }
-    
+
     // Get all trace results
-    fun getAllTraces(): Map<String, Long> {
+    actual fun getAllTraces(): Map<String, Long> {
         return traces.toMap()
     }
-    
+
     // Clear all traces
-    fun clearTraces() {
+    actual fun clearTraces() {
         traces.clear()
         startTimes.clear()
     }

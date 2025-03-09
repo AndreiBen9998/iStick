@@ -23,7 +23,7 @@ actual class PerformanceMonitor actual constructor(private val context: Any?) {
             startTimes[name]?.let { startTime ->
                 val duration = System.currentTimeMillis() - startTime
                 Log.d("PerformanceMonitor", "Trace $name completed in $duration ms")
-                
+
                 // Store the trace duration
                 traces[name] = duration
             } ?: Log.w("PerformanceMonitor", "Tried to stop non-existent trace: $name")
@@ -61,14 +61,14 @@ actual class PerformanceMonitor actual constructor(private val context: Any?) {
             Log.e("PerformanceMonitor", "Error monitoring memory: ${e.message}")
         }
     }
-    
+
     // Get all trace results - useful for debugging
-    fun getAllTraces(): Map<String, Long> {
+    actual fun getAllTraces(): Map<String, Long> {
         return traces.toMap()
     }
-    
+
     // Clear all traces
-    fun clearTraces() {
+    actual fun clearTraces() {
         traces.clear()
         startTimes.clear()
     }

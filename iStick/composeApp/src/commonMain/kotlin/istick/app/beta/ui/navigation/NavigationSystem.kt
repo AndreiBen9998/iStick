@@ -29,7 +29,6 @@ import istick.app.beta.ui.navigation.AppNavigator.Screen
 import istick.app.beta.ui.screens.CampaignListScreen
 import istick.app.beta.ui.screens.CarManagementScreen
 import istick.app.beta.ui.screens.ProfileScreen
-import istick.app.beta.utils.PerformanceMonitor
 
 /**
  * Main navigation system for the app. Handles the bottom navigation
@@ -43,12 +42,12 @@ fun NavigationSystem(
 ) {
     // State for current screen
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
-    
+
     // Create view models
     val homeViewModel = remember { appNavigator.createHomeViewModel() }
     val profileViewModel = remember { appNavigator.createProfileViewModel() }
     val carManagementViewModel = remember { appNavigator.createCarManagementViewModel() }
-    
+
     // Navigation items
     val navItems = listOf(
         NavItem(
@@ -63,7 +62,7 @@ fun NavigationSystem(
         ),
         NavItem(
             route = Screen.Photos,
-            icon = Icons.Default.Photo, 
+            icon = Icons.Default.Photo,
             label = "Photos"
         ),
         NavItem(
@@ -72,7 +71,7 @@ fun NavigationSystem(
             label = "Profile"
         )
     )
-    
+
     Scaffold(
         bottomBar = {
             BottomNavigation(
@@ -81,13 +80,13 @@ fun NavigationSystem(
             ) {
                 navItems.forEach { item ->
                     val selected = currentScreen == item.route
-                    
+
                     BottomNavigationItem(
-                        icon = { 
+                        icon = {
                             Icon(
                                 imageVector = item.icon,
                                 contentDescription = item.label
-                            ) 
+                            )
                         },
                         label = { Text(item.label) },
                         selected = selected,
@@ -120,7 +119,7 @@ fun NavigationSystem(
                     }
                 )
             }
-            
+
             // Car management screen
             AnimatedVisibility(
                 visible = currentScreen == Screen.CarManagement,
@@ -142,7 +141,7 @@ fun NavigationSystem(
                     }
                 )
             }
-            
+
             // Profile screen
             AnimatedVisibility(
                 visible = currentScreen == Screen.Profile,
@@ -155,7 +154,7 @@ fun NavigationSystem(
                     onLogout = onLogout
                 )
             }
-            
+
             // Photos screen placeholder
             AnimatedVisibility(
                 visible = currentScreen == Screen.Photos,
@@ -167,7 +166,7 @@ fun NavigationSystem(
                     Text("Photos Screen - Coming Soon", color = Color.White)
                 }
             }
-            
+
             // Handle detail screens
             // You would add more AnimatedVisibility blocks for other screens
             // like campaign details, etc.

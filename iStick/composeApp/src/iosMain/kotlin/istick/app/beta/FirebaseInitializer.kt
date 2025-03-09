@@ -3,7 +3,6 @@ package istick.app.beta
 
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.initialize
-import platform.Foundation.NSBundle
 
 actual object FirebaseInitializer {
     actual fun initialize() {

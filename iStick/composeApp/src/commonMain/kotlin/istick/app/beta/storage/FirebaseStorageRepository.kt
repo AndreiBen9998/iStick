@@ -1,9 +1,12 @@
+// File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/storage/FirebaseStorageRepository.kt
 package istick.app.beta.storage
 
 import dev.gitlive.firebase.Firebase
+import dev.gitlive.firebase.storage.StorageException
 import dev.gitlive.firebase.storage.storage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.cancellation.CancellationException
 
 class FirebaseStorageRepository : StorageRepository {
     private val storage = Firebase.storage
@@ -12,13 +15,19 @@ class FirebaseStorageRepository : StorageRepository {
     override suspend fun uploadImage(imageBytes: ByteArray, fileName: String): Result<String> =
         withContext(Dispatchers.IO) {
             try {
-                // Simulăm încărcarea pentru moment
-                // În realitate, ar trebui să studiezi documentația specifică dev.gitlive:firebase-storage
-                // pentru a folosi metodele corecte
+                val imageRef = imagesRef.child(fileName)
 
-                // Returnăm un URL simulat
-                Result.success("https://example.com/images/$fileName")
+                // Upload the image
+                val task = imageRef.putBytes(imageBytes)
+                task.await()
+
+                // Get the download URL
+                val downloadUrl = imageRef.getDownloadUrl().await()
+
+                Result.success(downloadUrl.toString())
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                println("Error uploading image: ${e.message}")
                 Result.failure(e)
             }
         }
@@ -26,9 +35,13 @@ class FirebaseStorageRepository : StorageRepository {
     override suspend fun getImageUrl(path: String): Result<String> =
         withContext(Dispatchers.IO) {
             try {
-                // Returnăm un URL simulat
-                Result.success("https://example.com/images/$path")
+                val imageRef = storage.reference.child(path)
+                val downloadUrl = imageRef.getDownloadUrl().await()
+
+                Result.success(downloadUrl.toString())
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                println("Error getting image URL: ${e.message}")
                 Result.failure(e)
             }
         }
@@ -36,9 +49,39 @@ class FirebaseStorageRepository : StorageRepository {
     override suspend fun getUserImages(userId: String): Result<List<String>> =
         withContext(Dispatchers.IO) {
             try {
-                // Returnăm o listă goală de URL-uri
-                Result.success(emptyList())
+                val userImagesRef = imagesRef.child("users").child(userId)
+
+                // List all items in the user's images folder
+                val result = userImagesRef.list(100).await()
+
+                // Get download URLs for all items
+                val urls = result.items.map { item ->
+                    item.getDownloadUrl().await().toString()
+                }
+
+                Result.success(urls)
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                // If the directory doesn't exist yet, just return an empty list
+                if (e is StorageException && e.message?.contains("Object does not exist") == true) {
+                    Result.success(emptyList())
+                } else {
+                    println("Error getting user images: ${e.message}")
+                    Result.failure(e)
+                }
+            }
+        }
+
+    override suspend fun deleteImage(path: String): Result<Boolean> =
+        withContext(Dispatchers.IO) {
+            try {
+                val imageRef = storage.reference.child(path)
+                imageRef.delete().await()
+
+                Result.success(true)
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                println("Error deleting image: ${e.message}")
                 Result.failure(e)
             }
         }

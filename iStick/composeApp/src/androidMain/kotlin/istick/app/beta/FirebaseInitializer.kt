@@ -6,8 +6,9 @@ import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.initialize
 
 actual object FirebaseInitializer {
-    // No-op implementation since Firebase is initialized in MyApplication
+    // Firebase is already initialized in MyApplication class
     actual fun initialize() {
-        // Intentionally empty - Firebase is already initialized in MyApplication
+        // No need to initialize again as it's done in MyApplication.onCreate
+        println("Firebase already initialized in MyApplication")
     }
 }

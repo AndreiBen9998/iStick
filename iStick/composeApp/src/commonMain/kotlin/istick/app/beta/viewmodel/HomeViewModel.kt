@@ -43,14 +43,19 @@ class HomeViewModel(
      */
     private fun loadUser() {
         viewModelScope.launch {
-            userRepository.getCurrentUser().fold(
-                onSuccess = { user ->
-                    _currentUser.value = user
-                },
-                onFailure = { error ->
-                    _error.value = "Failed to load user: ${error.message}"
-                }
-            )
+            try {
+                val result = userRepository.getCurrentUser()
+                result.fold(
+                    onSuccess = { user ->
+                        _currentUser.value = user
+                    },
+                    onFailure = { error ->
+                        _error.value = "Failed to load user: ${error.message}"
+                    }
+                )
+            } catch (e: Exception) {
+                _error.value = "Error loading user: ${e.message}"
+            }
         }
     }
 
@@ -60,39 +65,28 @@ class HomeViewModel(
     fun loadCampaigns() {
         if (_isLoading.value) return
 
-        viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
+        _isLoading.value = true
+        _error.value = null
 
-            // Check user type to determine what to load
-            val userType = _currentUser.value?.type
+        // Check user type to determine what to load
+        val userType = _currentUser.value?.type
 
-            if (userType == UserType.CAR_OWNER || userType == null) {
-                // Car owners see available campaigns
-                offersRepository.getOffers(
-                    onSuccess = { campaignList ->
-                        _campaigns.value = campaignList
-                        _isLoading.value = false
-                    },
-                    onError = { error ->
-                        _error.value = "Failed to load campaigns: ${error.message}"
-                        _isLoading.value = false
-                    }
-                )
-            } else if (userType == UserType.BRAND) {
-                // Brands see their own campaigns
-                offersRepository.getOffers(
-                    onSuccess = { campaignList ->
-                        _campaigns.value = campaignList.filter { it.brandId == _currentUser.value?.id }
-                        _isLoading.value = false
-                    },
-                    onError = { error ->
-                        _error.value = "Failed to load your campaigns: ${error.message}"
-                        _isLoading.value = false
-                    }
-                )
+        offersRepository.getOffers(
+            onSuccess = { campaignList ->
+                if (userType == UserType.BRAND) {
+                    // Brands see their own campaigns
+                    _campaigns.value = campaignList.filter { it.brandId == _currentUser.value?.id }
+                } else {
+                    // Car owners see available campaigns
+                    _campaigns.value = campaignList
+                }
+                _isLoading.value = false
+            },
+            onError = { error ->
+                _error.value = "Failed to load campaigns: ${error.message}"
+                _isLoading.value = false
             }
-        }
+        )
     }
 
     /**
@@ -101,20 +95,26 @@ class HomeViewModel(
     fun loadNextPage() {
         if (_isLoading.value) return
 
-        viewModelScope.launch {
-            _isLoading.value = true
+        _isLoading.value = true
 
-            offersRepository.getNextOffersPage(
-                onSuccess = { newCampaigns, hasMore ->
+        offersRepository.getNextOffersPage(
+            onSuccess = { newCampaigns, hasMore ->
+                val userType = _currentUser.value?.type
+                if (userType == UserType.BRAND) {
+                    // Filter for brand's own campaigns
+                    val filteredNewCampaigns = newCampaigns.filter { it.brandId == _currentUser.value?.id }
+                    _campaigns.value = _campaigns.value + filteredNewCampaigns
+                } else {
+                    // Show all campaigns to car owners
                     _campaigns.value = _campaigns.value + newCampaigns
-                    _isLoading.value = false
-                },
-                onError = { error ->
-                    _error.value = "Failed to load more campaigns: ${error.message}"
-                    _isLoading.value = false
                 }
-            )
-        }
+                _isLoading.value = false
+            },
+            onError = { error ->
+                _error.value = "Failed to load more campaigns: ${error.message}"
+                _isLoading.value = false
+            }
+        )
     }
 
     /**

@@ -45,19 +45,24 @@ class CampaignDetailViewModel(
         _isLoading.value = true
         _error.value = null
 
-        // Use the function that is available in the repository
-        // The specific error is about getOfferDetails
-        campaignRepository.getOfferDetails(
-            campaignId, // Using positional parameter instead of named
-            onSuccess = { campaign: Campaign -> // Explicitly specify the parameter type
-                _campaign.value = campaign
-                _isLoading.value = false
-            },
-            onError = { error: Exception -> // Explicitly specify the parameter type
-                _error.value = "Error loading campaign: ${error.toString()}" // Use toString() instead of message
+        viewModelScope.launch {
+            try {
+                val result = campaignRepository.fetchCampaignDetails(campaignId)
+                result.fold(
+                    onSuccess = { fetchedCampaign ->
+                        _campaign.value = fetchedCampaign
+                        _isLoading.value = false
+                    },
+                    onFailure = { exception ->
+                        _error.value = "Error loading campaign: ${exception.toString()}"
+                        _isLoading.value = false
+                    }
+                )
+            } catch (e: Exception) {
+                _error.value = "Error loading campaign: ${e.toString()}"
                 _isLoading.value = false
             }
-        )
+        }
     }
 
     // Function to load user's cars
@@ -76,12 +81,12 @@ class CampaignDetailViewModel(
                         _isLoading.value = false
                     },
                     onFailure = { exception ->
-                        _error.value = "Error loading cars: ${exception.toString()}" // Use toString() instead of message
+                        _error.value = "Error loading cars: ${exception.toString()}"
                         _isLoading.value = false
                     }
                 )
             } catch (e: Exception) {
-                _error.value = "Error loading cars: ${e.toString()}" // Use toString() instead of message
+                _error.value = "Error loading cars: ${e.toString()}"
                 _isLoading.value = false
             }
         }
@@ -106,16 +111,23 @@ class CampaignDetailViewModel(
             return
         }
 
-        // Mock implementation for now
-        // In a real app, this would call a repository method
-        _application.value = CampaignApplication(
-            id = "app_${System.currentTimeMillis()}",
-            campaignId = campaignId,
-            carOwnerId = "current_user",
-            carId = carId,
-            status = istick.app.beta.model.ApplicationStatus.PENDING
-        )
-
-        _isLoading.value = false
+        viewModelScope.launch {
+            try {
+                val result = campaignRepository.applyCampaign(campaignId, carId)
+                result.fold(
+                    onSuccess = { application ->
+                        _application.value = application
+                        _isLoading.value = false
+                    },
+                    onFailure = { exception ->
+                        _error.value = "Failed to apply to campaign: ${exception.toString()}"
+                        _isLoading.value = false
+                    }
+                )
+            } catch (e: Exception) {
+                _error.value = "Error applying to campaign: ${e.toString()}"
+                _isLoading.value = false
+            }
+        }
     }
 }

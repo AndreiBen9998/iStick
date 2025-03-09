@@ -1,15 +1,15 @@
-// File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/utils/PerformanceMonitor.kt
+// File: iStick/composeApp/src/androidMain/kotlin/istick/app/beta/utils/PerformanceMonitor.kt
 package istick.app.beta.utils
 
 import android.content.Context
 import android.util.Log
 import android.app.ActivityManager
 
-class PerformanceMonitor(private val context: Context) {
+actual class PerformanceMonitor actual constructor(private val context: Any?) {
     private val traces = mutableMapOf<String, Long>()
     private val startTimes = mutableMapOf<String, Long>()
 
-    fun startTrace(name: String) {
+    actual fun startTrace(name: String) {
         try {
             startTimes[name] = System.currentTimeMillis()
             Log.d("PerformanceMonitor", "Started trace: $name")
@@ -18,12 +18,12 @@ class PerformanceMonitor(private val context: Context) {
         }
     }
 
-    fun stopTrace(name: String) {
+    actual fun stopTrace(name: String) {
         try {
             startTimes[name]?.let { startTime ->
                 val duration = System.currentTimeMillis() - startTime
                 Log.d("PerformanceMonitor", "Trace $name completed in $duration ms")
-
+                
                 // Store the trace duration
                 traces[name] = duration
             } ?: Log.w("PerformanceMonitor", "Tried to stop non-existent trace: $name")
@@ -34,7 +34,7 @@ class PerformanceMonitor(private val context: Context) {
         }
     }
 
-    fun recordMetric(name: String, value: Long) {
+    actual fun recordMetric(name: String, value: Long) {
         try {
             Log.d("PerformanceMonitor", "Metric: $name = $value")
         } catch (e: Exception) {
@@ -42,27 +42,31 @@ class PerformanceMonitor(private val context: Context) {
         }
     }
 
-    fun monitorMemory() {
+    actual fun monitorMemory() {
         try {
-            val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-            val memoryInfo = ActivityManager.MemoryInfo()
-            activityManager.getMemoryInfo(memoryInfo)
+            if (context is Context) {
+                val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+                val memoryInfo = ActivityManager.MemoryInfo()
+                activityManager.getMemoryInfo(memoryInfo)
 
-            val availableMem = memoryInfo.availMem
-            val totalMem = memoryInfo.totalMem
-            val percentUsed = ((totalMem - availableMem).toFloat() / totalMem.toFloat()) * 100
+                val availableMem = memoryInfo.availMem
+                val totalMem = memoryInfo.totalMem
+                val percentUsed = ((totalMem - availableMem).toFloat() / totalMem.toFloat()) * 100
 
-            Log.d("PerformanceMonitor", "Memory used: $percentUsed%")
+                Log.d("PerformanceMonitor", "Memory used: $percentUsed%")
+            } else {
+                Log.e("PerformanceMonitor", "Context is not an Android Context")
+            }
         } catch (e: Exception) {
             Log.e("PerformanceMonitor", "Error monitoring memory: ${e.message}")
         }
     }
-
+    
     // Get all trace results - useful for debugging
     fun getAllTraces(): Map<String, Long> {
         return traces.toMap()
     }
-
+    
     // Clear all traces
     fun clearTraces() {
         traces.clear()

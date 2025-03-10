@@ -29,6 +29,7 @@ import istick.app.beta.ui.navigation.AppNavigator.Screen
 import istick.app.beta.ui.screens.CampaignListScreen
 import istick.app.beta.ui.screens.CarManagementScreen
 import istick.app.beta.ui.screens.ProfileScreen
+import istick.app.beta.utils.PerformanceMonitor
 
 /**
  * Main navigation system for the app. Handles the bottom navigation

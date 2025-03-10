@@ -7,21 +7,19 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class FirebaseStorageRepository : StorageRepository {
-    private val storage = Firebase.storage
-    private val imagesRef = storage.reference.child("images")
+    private val storage by lazy { Firebase.storage }
+    private val imagesRef by lazy { storage.reference.child("images") }
 
     override suspend fun uploadImage(imageBytes: ByteArray, fileName: String): Result<String> =
         withContext(Dispatchers.Default) {
             try {
                 val imageRef = imagesRef.child(fileName)
 
-                // Upload the image
-                val task = imageRef.putBytes(imageBytes)
-                task.await()
+                // Fix potential blocking issue with await
+                val uploadTask = imageRef.putBytes(imageBytes)
+                uploadTask.await()
 
-                // Get the download URL
                 val downloadUrl = imageRef.getDownloadUrl().await()
-
                 Result.success(downloadUrl.toString())
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e

@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import istick.app.beta.ui.navigation.AppNavigator
 import istick.app.beta.ui.navigation.NavigationSystem
+import istick.app.beta.utils.PerformanceMonitor
 
 @Composable
 fun MainScreen(

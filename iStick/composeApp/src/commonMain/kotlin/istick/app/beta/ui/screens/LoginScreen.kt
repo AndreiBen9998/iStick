@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import istick.app.beta.auth.FirebaseAuthRepository
 import istick.app.beta.utils.PerformanceMonitor
 import kotlinx.coroutines.launch
+import androidx.compose.animation.AnimatedVisibility
 
 @Composable
 fun LoginScreen(

@@ -18,6 +18,7 @@ import istick.app.beta.auth.FirebaseAuthRepository
 import istick.app.beta.ui.navigation.AppNavigator
 import istick.app.beta.ui.screens.LoginScreen
 import istick.app.beta.ui.screens.MainScreen
+import istick.app.beta.ui.screens.RegistrationScreen
 import istick.app.beta.utils.PerformanceMonitor
 
 @Composable
@@ -56,10 +57,16 @@ fun App() {
     // Track if user is logged in
     var isLoggedIn by remember { mutableStateOf(false) }
 
+    // Track app state
+    var appState by remember { mutableStateOf(AppState.LOGIN) }
+
     // Check if user is already logged in on app start
     LaunchedEffect(Unit) {
         runCatching {
             isLoggedIn = authRepository.isUserLoggedIn()
+            if (isLoggedIn) {
+                appState = AppState.MAIN
+            }
         }.onFailure { e ->
             println("Error checking login status: ${e.message}")
             // Just log the error instead of storing it
@@ -78,22 +85,42 @@ fun App() {
         ) {
             // Show login screen or main screen based on auth status
             AnimatedVisibility(
-                visible = !isLoggedIn,
+                visible = appState == AppState.LOGIN,
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
                 // Don't wrap this in try-catch, use only parameters that exist
                 LoginScreen(
                     onLoginSuccess = {
-                        isLoggedIn = true
+                        appState = AppState.MAIN
+                    },
+                    onNavigateToRegister = {
+                        appState = AppState.REGISTRATION
                     },
                     performanceMonitor = performanceMonitor
                     // No error parameter here since it doesn't exist
                 )
             }
 
+            // Registration screen
             AnimatedVisibility(
-                visible = isLoggedIn,
+                visible = appState == AppState.REGISTRATION,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                RegistrationScreen(
+                    onRegistrationSuccess = {
+                        appState = AppState.MAIN
+                    },
+                    onBackToLogin = {
+                        appState = AppState.LOGIN
+                    },
+                    performanceMonitor = performanceMonitor
+                )
+            }
+
+            AnimatedVisibility(
+                visible = appState == AppState.MAIN,
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
@@ -102,7 +129,7 @@ fun App() {
                     appNavigator = appNavigator,
                     performanceMonitor = performanceMonitor,
                     onLogout = {
-                        isLoggedIn = false
+                        appState = AppState.LOGIN
                     }
                 )
             }
@@ -118,6 +145,13 @@ fun App() {
             }
         }
     }
+}
+
+// App states
+enum class AppState {
+    LOGIN,
+    REGISTRATION,
+    MAIN
 }
 
 // Custom dark color palette

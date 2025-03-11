@@ -22,6 +22,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import istick.app.beta.auth.FirebaseAuthRepository
@@ -32,6 +33,7 @@ import androidx.compose.animation.AnimatedVisibility
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
+    onNavigateToRegister: () -> Unit,
     performanceMonitor: PerformanceMonitor,
     modifier: Modifier = Modifier
 ) {
@@ -250,6 +252,7 @@ fun LoginScreen(
             // Sign up link
             Row(
                 horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
@@ -259,10 +262,17 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.width(4.dp))
 
-                Text(
-                    text = "Sign up",
-                    color = Color(0xFF2962FF)
-                )
+                TextButton(
+                    onClick = onNavigateToRegister,
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = Color(0xFF2962FF)
+                    )
+                ) {
+                    Text(
+                        text = "Sign up",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }

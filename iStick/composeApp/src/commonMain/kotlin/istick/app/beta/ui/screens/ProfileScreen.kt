@@ -254,9 +254,9 @@ private fun CarOwnerDetails(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Daily driving distance
+        // Daily driving distance - replaced Speed with Info
         DetailItem(
-            icon = Icons.Default.Speed,
+            icon = Icons.Default.Info,  // Replaced Speed with Info
             label = "Daily Driving",
             value = "${carOwner.dailyDrivingDistance} km"
         )
@@ -311,7 +311,7 @@ private fun CarOwnerDetails(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            Icons.Default.DirectionsCar,
+                            Icons.Default.AccountCircle,  // Replaced DirectionsCar with AccountCircle
                             contentDescription = null,
                             tint = Color.White
                         )
@@ -355,27 +355,27 @@ private fun BrandDetails(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Company name
+        // Company name - replaced Business with AccountCircle
         DetailItem(
-            icon = Icons.Default.Business,
+            icon = Icons.Default.AccountCircle,  // Replaced Business with AccountCircle
             label = "Company",
             value = brand.companyDetails.companyName.ifEmpty { "Not specified" }
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Industry
+        // Industry - replaced Category with Info
         DetailItem(
-            icon = Icons.Default.Category,
+            icon = Icons.Default.Info,  // Replaced Category with Info
             label = "Industry",
             value = brand.companyDetails.industry.ifEmpty { "Not specified" }
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Website
+        // Website - replaced Language with LocationOn (since Link isn't available)
         DetailItem(
-            icon = Icons.Default.Language,
+            icon = Icons.Default.LocationOn,  // Using LocationOn as a substitute for website/link
             label = "Website",
             value = brand.companyDetails.website.ifEmpty { "Not specified" }
         )

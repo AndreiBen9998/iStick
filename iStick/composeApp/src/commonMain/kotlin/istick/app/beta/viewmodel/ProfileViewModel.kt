@@ -2,6 +2,7 @@
 package istick.app.beta.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import istick.app.beta.auth.AuthRepository
 import istick.app.beta.model.User
 import istick.app.beta.model.Car
@@ -11,6 +12,7 @@ import istick.app.beta.storage.StorageRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 class ProfileViewModel(
     private val authRepository: AuthRepository,
@@ -43,34 +45,38 @@ class ProfileViewModel(
         _isLoading.value = true
         _error.value = null
 
-        userRepository.getCurrentUser().fold(
-            onSuccess = { user ->
-                _user.value = user
+        viewModelScope.launch {
+            userRepository.getCurrentUser().fold(
+                onSuccess = { user ->
+                    _user.value = user
 
-                // If car owner, load cars
-                if (user?.type == istick.app.beta.model.UserType.CAR_OWNER) {
-                    loadCars(user.id)
+                    // If car owner, load cars
+                    if (user?.type == istick.app.beta.model.UserType.CAR_OWNER) {
+                        loadCars(user.id)
+                    }
+
+                    _isLoading.value = false
+                },
+                onFailure = { error ->
+                    _error.value = "Failed to load profile: ${error.message}"
+                    _isLoading.value = false
                 }
-
-                _isLoading.value = false
-            },
-            onFailure = { error ->
-                _error.value = "Failed to load profile: ${error.message}"
-                _isLoading.value = false
-            }
-        )
+            )
+        }
     }
 
     // Function to load cars
     private fun loadCars(userId: String) {
-        carRepository.fetchUserCars(userId).fold(
-            onSuccess = { carsList ->
-                _cars.value = carsList
-            },
-            onFailure = { error ->
-                _error.value = "Failed to load cars: ${error.message}"
-            }
-        )
+        viewModelScope.launch {
+            carRepository.fetchUserCars(userId).fold(
+                onSuccess = { carsList ->
+                    _cars.value = carsList
+                },
+                onFailure = { error ->
+                    _error.value = "Failed to load cars: ${error.message}"
+                }
+            )
+        }
     }
 
     // Function to upload profile picture
@@ -81,37 +87,41 @@ class ProfileViewModel(
         val userId = _user.value?.id ?: return
         val fileName = "profile_${userId}_${System.currentTimeMillis()}.jpg"
 
-        storageRepository.uploadImage(imageBytes, "profiles/$fileName").fold(
-            onSuccess = { imageUrl ->
-                userRepository.updateUserProfilePicture(userId, imageUrl).fold(
-                    onSuccess = { updatedUser ->
-                        _user.value = updatedUser
-                        _isLoading.value = false
-                    },
-                    onFailure = { error ->
-                        _error.value = "Failed to update profile picture: ${error.message}"
-                        _isLoading.value = false
-                    }
-                )
-            },
-            onFailure = { error ->
-                _error.value = "Failed to upload image: ${error.message}"
-                _isLoading.value = false
-            }
-        )
+        viewModelScope.launch {
+            storageRepository.uploadImage(imageBytes, "profiles/$fileName").fold(
+                onSuccess = { imageUrl ->
+                    userRepository.updateUserProfilePicture(userId, imageUrl).fold(
+                        onSuccess = { updatedUser ->
+                            _user.value = updatedUser
+                            _isLoading.value = false
+                        },
+                        onFailure = { error ->
+                            _error.value = "Failed to update profile picture: ${error.message}"
+                            _isLoading.value = false
+                        }
+                    )
+                },
+                onFailure = { error ->
+                    _error.value = "Failed to upload image: ${error.message}"
+                    _isLoading.value = false
+                }
+            )
+        }
     }
 
     // Function to sign out
     fun signOut(onComplete: () -> Unit) {
         _isLoading.value = true
 
-        try {
-            authRepository.signOut()
-            onComplete()
-        } catch (e: Exception) {
-            _error.value = "Failed to sign out: ${e.message}"
-        } finally {
-            _isLoading.value = false
+        viewModelScope.launch {
+            try {
+                authRepository.signOut()
+                onComplete()
+            } catch (e: Exception) {
+                _error.value = "Failed to sign out: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
         }
     }
 }

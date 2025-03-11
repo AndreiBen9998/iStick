@@ -43,134 +43,178 @@ fun NavigationSystem(
 ) {
     // State for current screen
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
+    // Error state
+    var navigationError by remember { mutableStateOf<String?>(null) }
 
-    // Create view models
-    val homeViewModel = remember { appNavigator.createHomeViewModel() }
-    val profileViewModel = remember { appNavigator.createProfileViewModel() }
-    val carManagementViewModel = remember { appNavigator.createCarManagementViewModel() }
+    try {
+        // Create view models
+        val homeViewModel = remember { appNavigator.createHomeViewModel() }
+        val profileViewModel = remember { appNavigator.createProfileViewModel() }
+        val carManagementViewModel = remember { appNavigator.createCarManagementViewModel() }
 
-    // Navigation items
-    val navItems = listOf(
-        NavItem(
-            route = Screen.Home,
-            icon = Icons.Default.Home,
-            label = "Home"
-        ),
-        NavItem(
-            route = Screen.CarManagement,
-            icon = Icons.Default.DirectionsCar,
-            label = "Cars"
-        ),
-        NavItem(
-            route = Screen.Photos,
-            icon = Icons.Default.Photo,
-            label = "Photos"
-        ),
-        NavItem(
-            route = Screen.Profile,
-            icon = Icons.Default.AccountCircle,
-            label = "Profile"
+        // Navigation items
+        val navItems = listOf(
+            NavItem(
+                route = Screen.Home,
+                icon = Icons.Default.Home,
+                label = "Home"
+            ),
+            NavItem(
+                route = Screen.CarManagement,
+                icon = Icons.Default.DirectionsCar,
+                label = "Cars"
+            ),
+            NavItem(
+                route = Screen.Photos,
+                icon = Icons.Default.Photo,
+                label = "Photos"
+            ),
+            NavItem(
+                route = Screen.Profile,
+                icon = Icons.Default.AccountCircle,
+                label = "Profile"
+            )
         )
-    )
 
-    Scaffold(
-        bottomBar = {
-            BottomNavigation(
-                backgroundColor = Color(0xFF0A1929),
-                contentColor = Color.White
+        Scaffold(
+            bottomBar = {
+                BottomNavigation(
+                    backgroundColor = Color(0xFF0A1929),
+                    contentColor = Color.White
+                ) {
+                    navItems.forEach { item ->
+                        val selected = currentScreen == item.route
+
+                        BottomNavigationItem(
+                            icon = {
+                                Icon(
+                                    imageVector = item.icon,
+                                    contentDescription = item.label
+                                )
+                            },
+                            label = { Text(item.label) },
+                            selected = selected,
+                            onClick = {
+                                try {
+                                    currentScreen = item.route
+                                } catch (e: Exception) {
+                                    navigationError = "Navigation error: ${e.message}"
+                                }
+                            },
+                            selectedContentColor = Color(0xFF2962FF),
+                            unselectedContentColor = Color.Gray
+                        )
+                    }
+                }
+            }
+        ) { paddingValues ->
+            // Content area
+            Box(
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
             ) {
-                navItems.forEach { item ->
-                    val selected = currentScreen == item.route
+                // Home screen
+                AnimatedVisibility(
+                    visible = currentScreen == Screen.Home,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    try {
+                        CampaignListScreen(
+                            viewModel = homeViewModel,
+                            performanceMonitor = appNavigator.performanceMonitor,
+                            onCampaignClick = { campaign ->
+                                // Navigate to campaign detail
+                                try {
+                                    currentScreen = Screen.CampaignDetail(campaign.id)
+                                } catch (e: Exception) {
+                                    navigationError = "Navigation error: ${e.message}"
+                                }
+                            }
+                        )
+                    } catch (e: Exception) {
+                        Text("Error loading Home screen: ${e.message}", color = Color.Red)
+                    }
+                }
 
-                    BottomNavigationItem(
-                        icon = {
-                            Icon(
-                                imageVector = item.icon,
-                                contentDescription = item.label
-                            )
-                        },
-                        label = { Text(item.label) },
-                        selected = selected,
-                        onClick = { currentScreen = item.route },
-                        selectedContentColor = Color(0xFF2962FF),
-                        unselectedContentColor = Color.Gray
-                    )
+                // Car management screen
+                AnimatedVisibility(
+                    visible = currentScreen == Screen.CarManagement,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    try {
+                        CarManagementScreen(
+                            viewModel = carManagementViewModel,
+                            performanceMonitor = appNavigator.performanceMonitor,
+                            userId = appNavigator.authRepository.getCurrentUserId() ?: "",
+                            onBackClick = {
+                                try {
+                                    currentScreen = Screen.Home
+                                } catch (e: Exception) {
+                                    navigationError = "Navigation error: ${e.message}"
+                                }
+                            },
+                            onAddCarClick = {
+                                try {
+                                    currentScreen = Screen.AddEditCar()
+                                } catch (e: Exception) {
+                                    navigationError = "Navigation error: ${e.message}"
+                                }
+                            },
+                            onCarClick = { carId ->
+                                try {
+                                    currentScreen = Screen.AddEditCar(carId)
+                                } catch (e: Exception) {
+                                    navigationError = "Navigation error: ${e.message}"
+                                }
+                            }
+                        )
+                    } catch (e: Exception) {
+                        Text("Error loading Car Management screen: ${e.message}", color = Color.Red)
+                    }
+                }
+
+                // Profile screen
+                AnimatedVisibility(
+                    visible = currentScreen == Screen.Profile,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    try {
+                        ProfileScreen(
+                            viewModel = profileViewModel,
+                            performanceMonitor = appNavigator.performanceMonitor,
+                            onLogout = onLogout
+                        )
+                    } catch (e: Exception) {
+                        Text("Error loading Profile screen: ${e.message}", color = Color.Red)
+                    }
+                }
+
+                // Photos screen placeholder
+                AnimatedVisibility(
+                    visible = currentScreen == Screen.Photos,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    // Placeholder - to be implemented
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        Text("Photos Screen - Coming Soon", color = Color.White)
+                    }
+                }
+
+                // Display any navigation errors
+                if (navigationError != null) {
+                    Text(navigationError ?: "", color = Color.Red)
                 }
             }
         }
-    ) { paddingValues ->
-        // Content area
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            // Home screen
-            AnimatedVisibility(
-                visible = currentScreen == Screen.Home,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                CampaignListScreen(
-                    viewModel = homeViewModel,
-                    performanceMonitor = appNavigator.performanceMonitor,
-                    onCampaignClick = { campaign ->
-                        // Navigate to campaign detail
-                        currentScreen = Screen.CampaignDetail(campaign.id)
-                    }
-                )
-            }
-
-            // Car management screen
-            AnimatedVisibility(
-                visible = currentScreen == Screen.CarManagement,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                CarManagementScreen(
-                    viewModel = carManagementViewModel,
-                    performanceMonitor = appNavigator.performanceMonitor,
-                    userId = appNavigator.authRepository.getCurrentUserId() ?: "",
-                    onBackClick = {
-                        currentScreen = Screen.Home
-                    },
-                    onAddCarClick = {
-                        currentScreen = Screen.AddEditCar()
-                    },
-                    onCarClick = { carId ->
-                        currentScreen = Screen.AddEditCar(carId)
-                    }
-                )
-            }
-
-            // Profile screen
-            AnimatedVisibility(
-                visible = currentScreen == Screen.Profile,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                ProfileScreen(
-                    viewModel = profileViewModel,
-                    performanceMonitor = appNavigator.performanceMonitor,
-                    onLogout = onLogout
-                )
-            }
-
-            // Photos screen placeholder
-            AnimatedVisibility(
-                visible = currentScreen == Screen.Photos,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                // Placeholder - to be implemented
-                Box(modifier = Modifier.fillMaxSize()) {
-                    Text("Photos Screen - Coming Soon", color = Color.White)
-                }
-            }
-
-            // Handle detail screens
-            // You would add more AnimatedVisibility blocks for other screens
-            // like campaign details, etc.
+    } catch (e: Exception) {
+        // Fallback for critical errors
+        Box(modifier = Modifier.fillMaxSize()) {
+            Text("Critical navigation error: ${e.message}", color = Color.Red)
         }
     }
 }

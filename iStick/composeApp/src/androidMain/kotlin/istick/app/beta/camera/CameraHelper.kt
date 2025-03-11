@@ -49,12 +49,22 @@ actual class CameraHelper(private val activity: Activity) {
     }
 }
 
-// This is the composable function that your app is already using
+// Improved Composable function with proper permission handling
 @Composable
 actual fun rememberCameraLauncher(onPhotoTaken: (ByteArray) -> Unit): () -> Unit {
     val context = LocalContext.current
 
-    // Create a camera launcher using the new Activity Result API
+    // Add permission launcher
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            // Only launch camera if permission is granted
+            cameraLauncher.launch(null)
+        }
+    }
+
+    // Camera launcher
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicturePreview()
     ) { bitmap ->
@@ -66,26 +76,20 @@ actual fun rememberCameraLauncher(onPhotoTaken: (ByteArray) -> Unit): () -> Unit
         }
     }
 
-    return remember(cameraLauncher) {
+    return remember(cameraLauncher, permissionLauncher) {
         {
             // Check permission before launching camera
-            if (ContextCompat.checkSelfPermission(
+            when {
+                ContextCompat.checkSelfPermission(
                     context,
                     Manifest.permission.CAMERA
-                ) == PackageManager.PERMISSION_GRANTED
-            ) {
-                cameraLauncher.launch(null)
-            } else {
-                // For a production app, you should request permission here
-                // This is simplified for your existing code
-                when (context) {
-                    is Activity -> {
-                        ActivityCompat.requestPermissions(
-                            context,
-                            arrayOf(Manifest.permission.CAMERA),
-                            100
-                        )
-                    }
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    // Permission already granted, launch camera
+                    cameraLauncher.launch(null)
+                }
+                else -> {
+                    // Request the permission
+                    permissionLauncher.launch(Manifest.permission.CAMERA)
                 }
             }
         }

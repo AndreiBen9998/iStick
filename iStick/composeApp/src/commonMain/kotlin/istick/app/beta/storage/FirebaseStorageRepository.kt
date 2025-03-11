@@ -17,9 +17,9 @@ class FirebaseStorageRepository : StorageRepository {
 
                 // Fix potential blocking issue with await
                 val uploadTask = imageRef.putBytes(imageBytes)
-                uploadTask.await()
+                uploadTask.await()  // Wait for upload to complete
 
-                val downloadUrl = imageRef.getDownloadUrl().await()
+                val downloadUrl = imageRef.getDownloadUrl().await()  // Wait for URL to be generated
                 Result.success(downloadUrl.toString())
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
@@ -32,7 +32,7 @@ class FirebaseStorageRepository : StorageRepository {
         withContext(Dispatchers.Default) {
             try {
                 val imageRef = storage.reference.child(path)
-                val downloadUrl = imageRef.getDownloadUrl().await()
+                val downloadUrl = imageRef.getDownloadUrl().await()  // Wait for URL to be generated
 
                 Result.success(downloadUrl.toString())
             } catch (e: Exception) {
@@ -47,12 +47,12 @@ class FirebaseStorageRepository : StorageRepository {
             try {
                 val userImagesRef = imagesRef.child("users").child(userId)
 
-                // List all items in the user's images folder
-                val result = userImagesRef.list(100).await()
+                // List all items in the user's images folder - limit to 100 items
+                val result = userImagesRef.listAll().await()  // Use listAll() instead of list(100)
 
                 // Get download URLs for all items
                 val urls = result.items.map { item ->
-                    item.getDownloadUrl().await().toString()
+                    item.getDownloadUrl().await().toString()  // Wait for each URL
                 }
 
                 Result.success(urls)
@@ -72,7 +72,7 @@ class FirebaseStorageRepository : StorageRepository {
         withContext(Dispatchers.Default) {
             try {
                 val imageRef = storage.reference.child(path)
-                imageRef.delete().await()
+                imageRef.delete().await()  // Wait for deletion to complete
 
                 Result.success(true)
             } catch (e: Exception) {

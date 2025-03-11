@@ -45,9 +45,9 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.runtime.compose)
 
-            // Updated to GitLive versions that are available in the repository
-            implementation("dev.gitlive:firebase-auth:1.11.1")
-            implementation("dev.gitlive:firebase-storage:1.11.1")
+            // Updated to latest compatible versions
+            implementation("dev.gitlive:firebase-auth:1.11.5")
+            implementation("dev.gitlive:firebase-storage:1.11.5")
 
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
         }

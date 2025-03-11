@@ -4,37 +4,69 @@ package istick.app.beta.camera
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import platform.Foundation.NSLog
+import platform.UIKit.UIApplication
+import platform.AVFoundation.AVAuthorizationStatus
+import platform.AVFoundation.AVAuthorizationStatusAuthorized
+import platform.AVFoundation.AVAuthorizationStatusDenied
+import platform.AVFoundation.AVAuthorizationStatusNotDetermined
+import platform.AVFoundation.AVAuthorizationStatusRestricted
+import platform.AVFoundation.AVCaptureDevice
+import platform.AVFoundation.AVMediaTypeVideo
+import platform.AVFoundation.authorizationStatusForMediaType
+import platform.AVFoundation.requestAccessForMediaType
 
 /**
  * iOS implementation of CameraHelper
- * Note: This is a simplified implementation. In a real application, 
- * you would need to use iOS-specific camera APIs.
  */
 actual class CameraHelper {
     actual fun checkCameraPermission(): Boolean {
-        // In a real app, you would check iOS camera permissions here
-        NSLog("CameraHelper: Checking camera permission")
-        return true
+        val status = AVCaptureDevice.authorizationStatusForMediaType(AVMediaTypeVideo)
+        return status == AVAuthorizationStatusAuthorized
     }
 
     actual fun requestCameraPermission() {
-        // In a real app, you would request iOS camera permissions here
-        NSLog("CameraHelper: Requesting camera permission")
+        AVCaptureDevice.requestAccessForMediaType(AVMediaTypeVideo) { granted ->
+            if (granted) {
+                NSLog("Camera permission granted")
+            } else {
+                NSLog("Camera permission denied")
+            }
+        }
+    }
+
+    // Helper function to get current status as string
+    fun getCameraAuthStatusString(): String {
+        return when (AVCaptureDevice.authorizationStatusForMediaType(AVMediaTypeVideo)) {
+            AVAuthorizationStatusAuthorized -> "Authorized"
+            AVAuthorizationStatusDenied -> "Denied"
+            AVAuthorizationStatusRestricted -> "Restricted"
+            AVAuthorizationStatusNotDetermined -> "Not Determined"
+            else -> "Unknown"
+        }
     }
 }
 
 /**
  * iOS implementation of camera launcher
- * Note: This is a placeholder. In a real application, you would implement
- * this using iOS-specific APIs to launch the camera.
+ * Note: This is still a basic implementation. In a real app,
+ * you'd implement UIImagePickerController.
  */
 @Composable
 actual fun rememberCameraLauncher(onPhotoTaken: (ByteArray) -> Unit): () -> Unit {
+    val helper = remember { CameraHelper() }
+
     return remember {
         {
-            NSLog("CameraHelper: Camera launcher invoked on iOS")
-            // In a real implementation, this would launch the iOS camera
-            // and handle the photo result
+            NSLog("Camera launcher: Current status: ${helper.getCameraAuthStatusString()}")
+
+            if (helper.checkCameraPermission()) {
+                NSLog("Camera permission already granted, would launch camera")
+                // In a real implementation, you would launch UIImagePickerController here
+                // and handle the photo result
+            } else {
+                NSLog("Requesting camera permission")
+                helper.requestCameraPermission()
+            }
         }
     }
 }

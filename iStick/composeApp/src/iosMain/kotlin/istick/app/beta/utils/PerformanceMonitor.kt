@@ -27,7 +27,7 @@ actual class PerformanceMonitor actual constructor(context: Any?) {
 
                 // Store the trace duration
                 traces[name] = duration
-            }
+            } ?: NSLog("PerformanceMonitor: Tried to stop non-existent trace: $name")
 
             startTimes.remove(name)
         } catch (e: Exception) {
@@ -39,6 +39,7 @@ actual class PerformanceMonitor actual constructor(context: Any?) {
         NSLog("PerformanceMonitor: Metric: $name = $value")
     }
 
+    @OptIn(ExperimentalForeignApi::class)
     actual fun monitorMemory() {
         // Basic iOS memory usage info - not as detailed as Android
         NSLog("PerformanceMonitor: iOS device name: ${UIDevice.currentDevice.name}")

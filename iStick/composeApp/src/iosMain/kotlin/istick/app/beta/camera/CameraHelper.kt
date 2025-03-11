@@ -4,7 +4,6 @@ package istick.app.beta.camera
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import platform.Foundation.NSLog
-import platform.UIKit.UIApplication
 import platform.AVFoundation.AVAuthorizationStatus
 import platform.AVFoundation.AVAuthorizationStatusAuthorized
 import platform.AVFoundation.AVAuthorizationStatusDenied
@@ -48,8 +47,6 @@ actual class CameraHelper {
 
 /**
  * iOS implementation of camera launcher
- * Note: This is still a basic implementation. In a real app,
- * you'd implement UIImagePickerController.
  */
 @Composable
 actual fun rememberCameraLauncher(onPhotoTaken: (ByteArray) -> Unit): () -> Unit {

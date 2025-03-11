@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
  * Common interface for camera functionality across platforms
  */
 expect class CameraHelper {
+    // No constructor parameters in the expect declaration
     fun checkCameraPermission(): Boolean
     fun requestCameraPermission()
 }

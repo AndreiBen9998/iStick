@@ -3,9 +3,7 @@ package istick.app.beta.utils
 
 import platform.Foundation.NSLog
 import platform.UIKit.UIDevice
-import kotlinx.cinterop.ExperimentalForeignApi
 
-@OptIn(ExperimentalForeignApi::class)
 actual class PerformanceMonitor actual constructor(context: Any?) {
     private val traces = mutableMapOf<String, Long>()
     private val startTimes = mutableMapOf<String, Long>()
@@ -39,7 +37,6 @@ actual class PerformanceMonitor actual constructor(context: Any?) {
         NSLog("PerformanceMonitor: Metric: $name = $value")
     }
 
-    @OptIn(ExperimentalForeignApi::class)
     actual fun monitorMemory() {
         // Basic iOS memory usage info - not as detailed as Android
         NSLog("PerformanceMonitor: iOS device name: ${UIDevice.currentDevice.name}")

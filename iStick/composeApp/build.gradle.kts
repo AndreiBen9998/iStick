@@ -1,3 +1,4 @@
+// iStick/composeApp/build.gradle.kts
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -7,7 +8,6 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-    id("com.google.gms.google-services")
     kotlin("plugin.serialization") version "2.1.0"
 }
 
@@ -31,10 +31,6 @@ kotlin {
     }
 
     sourceSets {
-        androidMain.dependencies {
-            implementation(compose.preview)
-            implementation(libs.androidx.activity.compose)
-        }
         commonMain.dependencies {
             implementation(compose.runtime)
             implementation(compose.foundation)
@@ -45,11 +41,26 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.runtime.compose)
 
-            // Updated to latest compatible versions
-            implementation("dev.gitlive:firebase-auth:1.11.5")
-            implementation("dev.gitlive:firebase-storage:1.11.5")
+            // Updated Firebase dependencies to latest compatible version
+            implementation("dev.gitlive:firebase-common:1.10.0")
+            implementation("dev.gitlive:firebase-auth:1.10.0")
+            implementation("dev.gitlive:firebase-storage:1.10.0")
 
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+        }
+
+        androidMain.dependencies {
+            implementation(compose.preview)
+            implementation(libs.androidx.activity.compose)
+
+            // Android-specific Firebase dependencies
+            implementation(platform("com.google.firebase:firebase-bom:32.5.0"))
+            implementation("com.google.firebase:firebase-auth")
+            implementation("com.google.firebase:firebase-storage")
+        }
+
+        iosMain.dependencies {
+            // No platform-specific Firebase dependencies required for iOS
         }
     }
 }
@@ -79,6 +90,8 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    // Apply Google Services plugin after Android configuration
+    apply(plugin = "com.google.gms.google-services")
 }
 
 dependencies {

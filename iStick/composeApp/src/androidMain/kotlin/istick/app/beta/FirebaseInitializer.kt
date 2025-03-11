@@ -1,4 +1,4 @@
-// In androidMain/kotlin/istick.app.beta/FirebaseInitializer.kt
+// File: iStick/composeApp/src/androidMain/kotlin/istick/app/beta/FirebaseInitializer.kt
 package istick.app.beta
 
 actual object FirebaseInitializer {

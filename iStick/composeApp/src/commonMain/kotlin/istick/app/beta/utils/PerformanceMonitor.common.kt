@@ -6,8 +6,6 @@ expect class PerformanceMonitor(context: Any?) {
     fun stopTrace(name: String)
     fun recordMetric(name: String, value: Long)
     fun monitorMemory()
-
-    // Adding these methods to the common interface
     fun getAllTraces(): Map<String, Long>
     fun clearTraces()
 }

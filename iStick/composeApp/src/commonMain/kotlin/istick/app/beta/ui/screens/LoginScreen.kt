@@ -8,11 +8,9 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.AccountCircle  // Available in base Material icons
+import androidx.compose.material.icons.filled.Lock           // Available in base Material icons
+import androidx.compose.material.icons.filled.Info           // Available in base Material icons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -102,8 +100,8 @@ fun LoginScreen(
                 label = { Text("Email") },
                 leadingIcon = {
                     Icon(
-                        Icons.Default.Email,
-                        contentDescription = null,
+                        Icons.Default.AccountCircle,  // Using AccountCircle for email icon
+                        contentDescription = "Email",
                         tint = Color.Gray
                     )
                 },
@@ -140,16 +138,17 @@ fun LoginScreen(
                 leadingIcon = {
                     Icon(
                         Icons.Default.Lock,
-                        contentDescription = null,
+                        contentDescription = "Password",
                         tint = Color.Gray
                     )
                 },
                 trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(
-                            if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = if (passwordVisible) "Hide password" else "Show password",
-                            tint = Color.Gray
+                    // Simple text button instead of icon
+                    TextButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Text(
+                            if (passwordVisible) "Hide" else "Show",
+                            color = Color.Gray,
+                            fontSize = 12.sp
                         )
                     }
                 },
@@ -194,8 +193,8 @@ fun LoginScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(
-                        Icons.Default.Error,
-                        contentDescription = null,
+                        Icons.Default.Info,  // Using Info for error icon
+                        contentDescription = "Error",
                         tint = Color.Red
                     )
 

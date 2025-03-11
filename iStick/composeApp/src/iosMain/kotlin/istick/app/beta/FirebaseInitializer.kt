@@ -6,7 +6,12 @@ import dev.gitlive.firebase.initialize
 
 actual object FirebaseInitializer {
     actual fun initialize() {
-        // Initialize Firebase for iOS
-        Firebase.initialize()
+        try {
+            // Initialize Firebase for iOS
+            Firebase.initialize()
+            println("Firebase initialized for iOS")
+        } catch (e: Exception) {
+            println("Error initializing Firebase for iOS: ${e.message}")
+        }
     }
 }

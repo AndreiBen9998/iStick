@@ -16,21 +16,26 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import java.io.ByteArrayOutputStream
 
-actual class CameraHelper(private val activity: Activity) {
-    companion object {
-        private const val CAMERA_PERMISSION_CODE = 100
+actual class CameraHelper {
+    private var activity: Activity? = null
+
+    // This is now a method, not a constructor
+    fun setActivity(activity: Activity) {
+        this.activity = activity
     }
 
     actual fun checkCameraPermission(): Boolean {
+        val ctx = activity ?: return false
         return ContextCompat.checkSelfPermission(
-            activity,
+            ctx,
             Manifest.permission.CAMERA
         ) == PackageManager.PERMISSION_GRANTED
     }
 
     actual fun requestCameraPermission() {
+        val act = activity ?: return
         ActivityCompat.requestPermissions(
-            activity,
+            act,
             arrayOf(Manifest.permission.CAMERA),
             CAMERA_PERMISSION_CODE
         )
@@ -44,8 +49,13 @@ actual class CameraHelper(private val activity: Activity) {
 
     // Launch camera method
     fun launchCamera(onResult: (Bitmap?) -> Unit) {
+        val act = activity ?: return
         val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-        activity.startActivityForResult(intent, CAMERA_PERMISSION_CODE)
+        act.startActivityForResult(intent, CAMERA_PERMISSION_CODE)
+    }
+
+    companion object {
+        private const val CAMERA_PERMISSION_CODE = 100
     }
 }
 
@@ -54,18 +64,8 @@ actual class CameraHelper(private val activity: Activity) {
 actual fun rememberCameraLauncher(onPhotoTaken: (ByteArray) -> Unit): () -> Unit {
     val context = LocalContext.current
 
-    // Add permission launcher
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        if (isGranted) {
-            // Only launch camera if permission is granted
-            cameraLauncher.launch(null)
-        }
-    }
-
-    // Camera launcher
-    val cameraLauncher = rememberLauncherForActivityResult(
+    // Camera launcher - defined first to be referenced later
+    val cameraPictureLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicturePreview()
     ) { bitmap ->
         // If bitmap is not null, convert it to ByteArray and call the callback
@@ -76,7 +76,17 @@ actual fun rememberCameraLauncher(onPhotoTaken: (ByteArray) -> Unit): () -> Unit
         }
     }
 
-    return remember(cameraLauncher, permissionLauncher) {
+    // Permission launcher
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            // Only launch camera if permission is granted
+            cameraPictureLauncher.launch(null)
+        }
+    }
+
+    return remember(cameraPictureLauncher, permissionLauncher) {
         {
             // Check permission before launching camera
             when {
@@ -85,7 +95,7 @@ actual fun rememberCameraLauncher(onPhotoTaken: (ByteArray) -> Unit): () -> Unit
                     Manifest.permission.CAMERA
                 ) == PackageManager.PERMISSION_GRANTED -> {
                     // Permission already granted, launch camera
-                    cameraLauncher.launch(null)
+                    cameraPictureLauncher.launch(null)
                 }
                 else -> {
                     // Request the permission

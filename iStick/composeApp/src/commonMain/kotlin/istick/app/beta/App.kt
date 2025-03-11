@@ -22,24 +22,48 @@ import istick.app.beta.utils.PerformanceMonitor
 
 @Composable
 fun App() {
-    // Initialize Firebase
+    // Get context
+    val context = LocalContext.current
+
+    // Initialize performance monitor
+    val performanceMonitor = remember { PerformanceMonitor(context) }
+
+    // Track initialization errors
+    var initError by remember { mutableStateOf<String?>(null) }
+
+    // Start tracking app startup
     LaunchedEffect(Unit) {
-        FirebaseInitializer.initialize()
+        performanceMonitor.startTrace("app_startup")
+
+        // Initialize Firebase
+        runCatching {
+            FirebaseInitializer.initialize()
+        }.onFailure { e ->
+            println("Error initializing Firebase: ${e.message}")
+            // Just log the error instead of storing it
+        }
     }
 
-    // Initialize repositories and performance monitor
-    val context = LocalContext.current
-    val performanceMonitor = remember { PerformanceMonitor(context) }
+    // Initialize repositories
     val authRepository = remember { FirebaseAuthRepository() }
-    val appNavigator = remember { AppNavigator(authRepository = authRepository, performanceMonitor = performanceMonitor) }
+    val appNavigator = remember {
+        AppNavigator(
+            authRepository = authRepository,
+            performanceMonitor = performanceMonitor
+        )
+    }
 
     // Track if user is logged in
     var isLoggedIn by remember { mutableStateOf(false) }
 
     // Check if user is already logged in on app start
     LaunchedEffect(Unit) {
-        isLoggedIn = authRepository.isUserLoggedIn()
-        performanceMonitor.startTrace("app_startup")
+        runCatching {
+            isLoggedIn = authRepository.isUserLoggedIn()
+        }.onFailure { e ->
+            println("Error checking login status: ${e.message}")
+            // Just log the error instead of storing it
+        }
     }
 
     // Material theme with dark colors
@@ -58,11 +82,13 @@ fun App() {
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
+                // Don't wrap this in try-catch, use only parameters that exist
                 LoginScreen(
                     onLoginSuccess = {
                         isLoggedIn = true
                     },
                     performanceMonitor = performanceMonitor
+                    // No error parameter here since it doesn't exist
                 )
             }
 
@@ -71,6 +97,7 @@ fun App() {
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
+                // Don't wrap this in try-catch
                 MainScreen(
                     appNavigator = appNavigator,
                     performanceMonitor = performanceMonitor,
@@ -85,8 +112,10 @@ fun App() {
     // Stop performance tracking when app exits
     DisposableEffect(Unit) {
         onDispose {
-            performanceMonitor.stopTrace("app_startup")
-            performanceMonitor.monitorMemory()
+            runCatching {
+                performanceMonitor.stopTrace("app_startup")
+                performanceMonitor.monitorMemory()
+            }
         }
     }
 }

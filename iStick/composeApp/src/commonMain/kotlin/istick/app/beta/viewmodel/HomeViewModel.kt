@@ -12,9 +12,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-// Add pagination state tracking
-private val _isEndReached = MutableStateFlow(false)
-val isEndReached: StateFlow<Boolean> = _isEndReached.asStateFlow()
 
 class HomeViewModel(
     private val offersRepository: OptimizedOffersRepository = OptimizedOffersRepository(),
@@ -36,6 +33,7 @@ class HomeViewModel(
     private val _currentUser = MutableStateFlow<User?>(null)
     val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
 
+    // End reached state
     private val _isEndReached = MutableStateFlow(false)
     val isEndReached: StateFlow<Boolean> = _isEndReached.asStateFlow()
 
@@ -128,6 +126,7 @@ class HomeViewModel(
      */
     fun refresh() {
         offersRepository.clearCache()
+        _isEndReached.value = false
         loadCampaigns()
     }
 }

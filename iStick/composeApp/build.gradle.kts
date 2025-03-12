@@ -9,7 +9,8 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     kotlin("plugin.serialization") version "2.1.0"
-    id("kotlin-kapt")
+    // Apply KSP plugin correctly
+    id("com.google.devtools.ksp")
 }
 
 kotlin {
@@ -60,10 +61,10 @@ kotlin {
             implementation("com.google.firebase:firebase-auth")
             implementation("com.google.firebase:firebase-storage")
 
-            // Room dependencies - use KSP instead of kapt
+            // Room dependencies - use KSP consistently
             implementation("androidx.room:room-runtime:2.6.1")
             implementation("androidx.room:room-ktx:2.6.1")
-            // This line uses KSP instead of kapt
+            // This line uses KSP for Room
             ksp("androidx.room:room-compiler:2.6.1")
         }
 

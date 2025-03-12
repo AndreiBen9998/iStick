@@ -1,7 +1,6 @@
 // File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/ui/navigation/AppNavigator.kt
 package istick.app.beta.ui.navigation
 
-import MileageVerificationViewModel
 import istick.app.beta.auth.AuthRepository
 import istick.app.beta.auth.FirebaseAuthRepository
 import istick.app.beta.repository.CarRepository
@@ -16,12 +15,12 @@ import istick.app.beta.utils.PerformanceMonitor
 import istick.app.beta.viewmodel.CarManagementViewModel
 import istick.app.beta.viewmodel.CampaignDetailViewModel
 import istick.app.beta.viewmodel.HomeViewModel
+import istick.app.beta.viewmodel.MileageVerificationViewModel
 import istick.app.beta.viewmodel.ProfileViewModel
 
 /**
  * Navigation manager for the app
  */
-data class MileageVerification(val carId: String) : AppNavigator.Screen()
 class AppNavigator(
     val authRepository: AuthRepository = FirebaseAuthRepository(),
     val userRepository: UserRepository = FirebaseUserRepository(authRepository),
@@ -54,11 +53,13 @@ class AppNavigator(
         object ManageCampaigns : Screen()
         data class ManageApplications(val campaignId: String) : Screen()
     }
+
     fun createMileageVerificationViewModel(): MileageVerificationViewModel {
         return MileageVerificationViewModel(
             carRepository = carRepository
         )
     }
+
     // ViewModel factory methods
     fun createHomeViewModel(): HomeViewModel {
         return HomeViewModel(userRepository = userRepository)

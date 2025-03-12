@@ -1,23 +1,22 @@
 // iStick/composeApp/build.gradle.kts
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
-import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.KotlinJvmOptions
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
-    alias(libs.plugins.composeCompiler)
     kotlin("plugin.serialization") version "2.1.0"
-    // Apply KSP plugin correctly
-    id("com.google.devtools.ksp")
+    id("com.google.devtools.ksp") version "1.9.0-1.0.13"
 }
 
 kotlin {
-    androidTarget {
-        @OptIn(ExperimentalKotlinGradlePluginApi::class)
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_11)
+    // Properly configure Android target
+    androidTarget()
+
+    // Configure Java version for Android
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+        kotlinOptions {
+            jvmTarget = "11"
         }
     }
 
@@ -57,21 +56,29 @@ kotlin {
             implementation(libs.androidx.activity.compose)
 
             // Android-specific Firebase dependencies
-            implementation(platform("com.google.firebase:firebase-bom:33.10.0"))
-            implementation("com.google.firebase:firebase-auth")
-            implementation("com.google.firebase:firebase-storage")
+            implementation("com.google.firebase:firebase-auth:22.3.1")
+            implementation("com.google.firebase:firebase-storage:20.3.0")
 
-            // Room dependencies - use KSP consistently
+            // Room dependencies
             implementation("androidx.room:room-runtime:2.6.1")
             implementation("androidx.room:room-ktx:2.6.1")
-            // This line uses KSP for Room
-            ksp("androidx.room:room-compiler:2.6.1")
         }
 
         iosMain.dependencies {
             // No platform-specific Firebase dependencies required for iOS
         }
     }
+}
+
+// Configure KSP properly
+dependencies {
+    add("kspAndroid", "androidx.room:room-compiler:2.6.1")
+
+    implementation(libs.androidx.room.common)
+    implementation(libs.androidx.room.ktx)
+    implementation(libs.firebase.perf.ktx)
+    debugImplementation(compose.uiTooling)
+    implementation("androidx.activity:activity-compose:1.8.0")
 }
 
 android {
@@ -101,12 +108,4 @@ android {
     }
     // Apply Google Services plugin after Android configuration
     apply(plugin = "com.google.gms.google-services")
-}
-
-dependencies {
-    implementation(libs.androidx.room.common)
-    implementation(libs.androidx.room.ktx)
-    implementation(libs.firebase.perf.ktx)
-    debugImplementation(compose.uiTooling)
-    implementation("androidx.activity:activity-compose:1.8.0")
 }

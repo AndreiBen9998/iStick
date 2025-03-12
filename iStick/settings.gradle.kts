@@ -1,22 +1,23 @@
-// File: iStick/settings.gradle.kts
+// iStick/settings.gradle.kts
 rootProject.name = "iStick"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {
     repositories {
-        google()
         gradlePluginPortal()
+        google()
         mavenCentral()
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
     }
 }
 
 dependencyResolutionManagement {
+    // Changed from FAIL_ON_PROJECT_REPOS to PREFER_SETTINGS
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
         google()
         mavenCentral()
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
-        // Add specific repository for GitLive Firebase dependencies
         maven("https://maven.pkg.jetbrains.space/public/p/kotlinx-coroutines/maven")
         maven("https://maven.pkg.jetbrains.space/kotlin/p/kotlin/dev")
     }

@@ -1,9 +1,8 @@
 // File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/ui/navigation/NavigationSystem.kt
 package istick.app.beta.ui.navigation
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -26,8 +25,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import istick.app.beta.ui.navigation.AppNavigator.Screen
 import istick.app.beta.ui.screens.CampaignListScreen
 import istick.app.beta.ui.screens.CarManagementScreen
+import istick.app.beta.ui.screens.MileageVerificationScreen
 import istick.app.beta.ui.screens.ProfileScreen
 import istick.app.beta.utils.PerformanceMonitor
+import istick.app.beta.viewmodel.MileageVerificationViewModel
 
 /**
  * Main navigation system for the app. Handles the bottom navigation
@@ -113,10 +114,9 @@ fun NavigationSystem(
             // Home screen
             AnimatedVisibility(
                 visible = currentScreen == Screen.Home,
-                enter = fadeIn(),
-                exit = fadeOut()
+                enter = fadeIn(animationSpec = tween(300)) + slideInHorizontally(),
+                exit = fadeOut(animationSpec = tween(300)) + slideOutHorizontally()
             ) {
-                // Removed try-catch
                 CampaignListScreen(
                     viewModel = homeViewModel,
                     performanceMonitor = appNavigator.performanceMonitor,
@@ -129,11 +129,10 @@ fun NavigationSystem(
 
             // Car management screen
             AnimatedVisibility(
-                visible = currentScreen == Screen.CarManagement,
-                enter = fadeIn(),
-                exit = fadeOut()
+                visible = currentScreen == Screen.CarManagement,  // FIXED: This was incorrectly set to Home
+                enter = fadeIn(animationSpec = tween(300)) + slideInHorizontally(),
+                exit = fadeOut(animationSpec = tween(300)) + slideOutHorizontally()
             ) {
-                // Removed try-catch
                 CarManagementScreen(
                     viewModel = carManagementViewModel,
                     performanceMonitor = appNavigator.performanceMonitor,
@@ -146,6 +145,10 @@ fun NavigationSystem(
                     },
                     onCarClick = { carId ->
                         currentScreen = Screen.AddEditCar(carId)
+                    },
+                    onVerifyMileageClick = { carId ->
+                        // New navigation to mileage verification
+                        currentScreen = Screen.MileageVerification(carId)
                     }
                 )
             }
@@ -153,10 +156,9 @@ fun NavigationSystem(
             // Profile screen
             AnimatedVisibility(
                 visible = currentScreen == Screen.Profile,
-                enter = fadeIn(),
-                exit = fadeOut()
+                enter = fadeIn(animationSpec = tween(300)) + slideInHorizontally(),
+                exit = fadeOut(animationSpec = tween(300)) + slideOutHorizontally()
             ) {
-                // Removed try-catch
                 ProfileScreen(
                     viewModel = profileViewModel,
                     performanceMonitor = appNavigator.performanceMonitor,
@@ -167,13 +169,37 @@ fun NavigationSystem(
             // Photos screen placeholder
             AnimatedVisibility(
                 visible = currentScreen == Screen.Photos,
-                enter = fadeIn(),
-                exit = fadeOut()
+                enter = fadeIn(animationSpec = tween(300)) + slideInHorizontally(),
+                exit = fadeOut(animationSpec = tween(300)) + slideOutHorizontally()
             ) {
                 // Placeholder - to be implemented
                 Box(modifier = Modifier.fillMaxSize()) {
                     Text("Photos Screen - Coming Soon", color = Color.White)
                 }
+            }
+
+            // Mileage Verification screen
+            AnimatedVisibility(
+                visible = currentScreen is Screen.MileageVerification,
+                enter = fadeIn(animationSpec = tween(300)) + slideInHorizontally(),
+                exit = fadeOut(animationSpec = tween(300)) + slideOutHorizontally()
+            ) {
+                val carId = (currentScreen as? Screen.MileageVerification)?.carId ?: ""
+                val viewModel = remember { appNavigator.createMileageVerificationViewModel() }
+
+                MileageVerificationScreen(
+                    viewModel = viewModel,
+                    carId = carId,
+                    onSuccess = {
+                        // Navigate back to car management
+                        currentScreen = Screen.CarManagement
+                    },
+                    onCancel = {
+                        // Go back
+                        currentScreen = Screen.CarManagement
+                    },
+                    performanceMonitor = appNavigator.performanceMonitor
+                )
             }
 
             // Display any navigation errors

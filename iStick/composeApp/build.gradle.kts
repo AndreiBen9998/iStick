@@ -36,6 +36,7 @@ kotlin {
             implementation(compose.foundation)
             implementation(compose.material)
             implementation(compose.ui)
+            implementation(compose.animation)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodel)
@@ -54,7 +55,7 @@ kotlin {
             implementation(libs.androidx.activity.compose)
 
             // Android-specific Firebase dependencies
-            implementation(platform("com.google.firebase:firebase-bom:32.5.0"))
+            implementation(platform("com.google.firebase:firebase-bom:33.10.0"))
             implementation("com.google.firebase:firebase-auth")
             implementation("com.google.firebase:firebase-storage")
         }

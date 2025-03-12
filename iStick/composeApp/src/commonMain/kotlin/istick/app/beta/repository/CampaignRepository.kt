@@ -7,8 +7,10 @@ import istick.app.beta.model.CampaignStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 
+fun observeActiveCampaigns(): Flow<List<Campaign>>
 /**
  * Repository interface for managing campaigns
  */
@@ -242,6 +244,26 @@ class FirebaseCampaignRepository : CampaignRepository {
             Result.success(updatedCampaign)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+    override fun observeActiveCampaigns(): Flow<List<Campaign>> = callbackFlow {
+        try {
+            // In a real implementation, this would use Firestore listeners
+            // For now, we'll simulate with periodic updates
+            val timer = Timer()
+            timer.scheduleAtFixedRate(object : TimerTask() {
+                override fun run() {
+                    fetchActiveCampaigns().onSuccess { campaigns ->
+                        trySend(campaigns)
+                    }
+                }
+            }, 0, 60000) // Every minute
+
+            awaitClose { timer.cancel() }
+        } catch (e: Exception) {
+            // Log and emit empty list on error
+            println("Error setting up campaign observer: ${e.message}")
+            trySend(emptyList())
         }
     }
 }

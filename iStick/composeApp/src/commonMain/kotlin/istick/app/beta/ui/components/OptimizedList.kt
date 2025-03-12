@@ -1,11 +1,10 @@
 // File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/ui/components/OptimizedList.kt
 package istick.app.beta.ui.components
 
-import androidx.compose.foundation.background
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
@@ -17,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import istick.app.beta.model.Campaign
+import androidx.compose.animation.animateItemPlacement
 
 @Composable
 fun OptimizedOffersList(
@@ -48,25 +48,35 @@ fun OptimizedOffersList(
         state = lazyListState,
         modifier = modifier
     ) {
-        itemsIndexed(
+        items(
             items = offers,
-            key = { _, offer -> offer.id }
-        ) { index, offer ->
-            val isVisible = index >= lazyListState.firstVisibleItemIndex - 5 &&
-                    index <= lazyListState.firstVisibleItemIndex + lazyListState.layoutInfo.visibleItemsInfo.size + 5
+            key = { it.id }
+        ) { offer ->
+            OfferItemCard(
+                offer = offer,
+                onClick = { onOfferClick(offer) },
+                modifier = Modifier.animateItemPlacement() // Add animation for reordering
+            )
+        }
 
-            if (isVisible) {
-                OfferItemCard(
-                    offer = offer,
-                    onClick = { onOfferClick(offer) }
-                )
-            } else {
+        // Add pagination support
+        if (!isEndReached && !isLoading) {
+            item {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(120.dp)
-                        .padding(8.dp)
-                )
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Button(
+                        onClick = onLoadMore,
+                        colors = ButtonDefaults.buttonColors(
+                            backgroundColor = Color(0xFF2962FF)
+                        )
+                    ) {
+                        Text("Load More")
+                    }
+                }
             }
         }
     }

@@ -1,6 +1,7 @@
 // File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/ui/components/OptimizedHomeScreen.kt
 package istick.app.beta.ui.components
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -15,6 +16,8 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -24,6 +27,88 @@ import istick.app.beta.utils.PerformanceMonitor
 import istick.app.beta.viewmodel.HomeViewModel
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.ripple.rememberRipple
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
+
+@Composable
+fun ShimmerCampaignItem() {
+    val shimmerColors = listOf(
+        Color(0xFF1A3B66),
+        Color(0xFF2A4B76),
+        Color(0xFF1A3B66),
+    )
+    val transition = rememberInfiniteTransition()
+    val translateAnim = transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        )
+    )
+
+    val brush = Brush.linearGradient(
+        colors = shimmerColors,
+        start = Offset(10f, 10f),
+        end = Offset(translateAnim.value, translateAnim.value)
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp, horizontal = 8.dp),
+        backgroundColor = Color(0xFF1A3B66),
+        elevation = 4.dp,
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            // Title placeholder
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.7f)
+                    .height(24.dp)
+                    .background(brush, RoundedCornerShape(4.dp))
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Description placeholder
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(16.dp)
+                    .background(brush, RoundedCornerShape(4.dp))
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Second line placeholder
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .height(16.dp)
+                    .background(brush, RoundedCornerShape(4.dp))
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Status placeholder
+            Box(
+                modifier = Modifier
+                    .width(80.dp)
+                    .height(14.dp)
+                    .background(brush, RoundedCornerShape(4.dp))
+            )
+        }
+    }
+}
 
 @Composable
 fun HomeScreen(
@@ -59,16 +144,12 @@ fun HomeScreen(
 
         // Display loader during initial loading
         if (isLoading && offers.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                contentAlignment = Alignment.Center
+            LazyColumn(
+                contentPadding = PaddingValues(8.dp)
             ) {
-                CircularProgressIndicator(
-                    color = Color(0xFF2962FF),
-                    modifier = Modifier.size(48.dp)
-                )
+                items(5) { // Show 5 shimmer items
+                    ShimmerCampaignItem()
+                }
             }
         } else {
             // LazyColumn with offers
@@ -175,11 +256,35 @@ private fun OfferCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // State for the "like" functionality
+    var isLiked by remember { mutableStateOf(false) }
+
+    // Animation for card press
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    // Scale animation when pressing
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.98f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        )
+    )
+
     Card(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp, horizontal = 8.dp)
-            .clickable(onClick = onClick),
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = rememberRipple(bounded = true, color = Color.White.copy(alpha = 0.1f)),
+                onClick = onClick
+            ),
         backgroundColor = Color(0xFF1A3B66),
         elevation = 4.dp,
         shape = RoundedCornerShape(8.dp)
@@ -203,11 +308,21 @@ private fun OfferCard(
                     modifier = Modifier.weight(1f)
                 )
 
-                Text(
-                    text = "${campaign.payment.amount} ${campaign.payment.currency}",
-                    color = Color(0xFF2962FF),
-                    fontWeight = FontWeight.Bold
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Like button with pulsating animation
+                    PulsatingHeartButton(
+                        isLiked = isLiked,
+                        onClick = { isLiked = !isLiked }
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Text(
+                        text = "${campaign.payment.amount} ${campaign.payment.currency}",
+                        color = Color(0xFF2962FF),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -223,18 +338,92 @@ private fun OfferCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Status
-            Text(
-                text = "Status: ${campaign.status.name}",
-                style = MaterialTheme.typography.caption,
-                color = when(campaign.status) {
-                    istick.app.beta.model.CampaignStatus.ACTIVE -> Color(0xFF4CAF50)
-                    istick.app.beta.model.CampaignStatus.DRAFT -> Color(0xFFFF9800)
-                    istick.app.beta.model.CampaignStatus.PAUSED -> Color(0xFFBDBDBD)
-                    istick.app.beta.model.CampaignStatus.COMPLETED -> Color(0xFF2196F3)
-                    istick.app.beta.model.CampaignStatus.CANCELLED -> Color(0xFFF44336)
-                }
-            )
+            // Status with animation
+            AnimatedStatusBadge(status = campaign.status)
         }
+    }
+}
+
+// Pulsating heart animation
+@Composable
+private fun PulsatingHeartButton(
+    isLiked: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Create transition for animation
+    val transition = updateTransition(isLiked, label = "likeTransition")
+
+    // Scale animation
+    val scale by transition.animateFloat(
+        transitionSpec = {
+            if (targetState) {
+                // When becoming liked - bounce effect
+                spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            } else {
+                // When becoming unliked - simple spring
+                spring(stiffness = Spring.StiffnessLow)
+            }
+        },
+        label = "scale"
+    ) { liked -> if (liked) 1.3f else 1.0f }
+
+    // Color animation
+    val color by transition.animateColor(
+        transitionSpec = { tween(durationMillis = 300) },
+        label = "color"
+    ) { liked -> if (liked) Color.Red else Color.Gray }
+
+    // We'll use simple icons since we're limited in icon availability
+    Box(
+        modifier = modifier
+            .size(36.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+            contentDescription = if (isLiked) "Liked" else "Not liked",
+            tint = color,
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}
+
+// Animated status badge
+@Composable
+private fun AnimatedStatusBadge(status: CampaignStatus) {
+    val color = when(status) {
+        CampaignStatus.ACTIVE -> Color(0xFF4CAF50)
+        CampaignStatus.DRAFT -> Color(0xFFFF9800)
+        CampaignStatus.PAUSED -> Color(0xFFBDBDBD)
+        CampaignStatus.COMPLETED -> Color(0xFF2196F3)
+        CampaignStatus.CANCELLED -> Color(0xFFF44336)
+    }
+
+    // Animation for appearing
+    val alpha by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = tween(durationMillis = 500)
+    )
+
+    Box(
+        modifier = Modifier
+            .alpha(alpha)
+            .background(color.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Text(
+            text = status.name,
+            style = MaterialTheme.typography.caption,
+            color = color
+        )
     }
 }

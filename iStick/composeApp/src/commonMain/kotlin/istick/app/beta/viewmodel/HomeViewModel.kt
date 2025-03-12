@@ -12,6 +12,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+// Add pagination state tracking
+private val _isEndReached = MutableStateFlow(false)
+val isEndReached: StateFlow<Boolean> = _isEndReached.asStateFlow()
 
 class HomeViewModel(
     private val offersRepository: OptimizedOffersRepository = OptimizedOffersRepository(),
@@ -93,21 +96,21 @@ class HomeViewModel(
      * Load the next page of campaigns
      */
     fun loadNextPage() {
-        if (_isLoading.value) return
+        if (_isLoading.value || _isEndReached.value) return
 
         _isLoading.value = true
 
         offersRepository.getNextOffersPage(
             onSuccess = { newCampaigns, hasMore ->
                 val userType = _currentUser.value?.type
-                if (userType == UserType.BRAND) {
-                    // Filter for brand's own campaigns
-                    val filteredNewCampaigns = newCampaigns.filter { it.brandId == _currentUser.value?.id }
-                    _campaigns.value = _campaigns.value + filteredNewCampaigns
+                val filteredNewCampaigns = if (userType == UserType.BRAND) {
+                    newCampaigns.filter { it.brandId == _currentUser.value?.id }
                 } else {
-                    // Show all campaigns to car owners
-                    _campaigns.value = _campaigns.value + newCampaigns
+                    newCampaigns
                 }
+
+                _campaigns.value = _campaigns.value + filteredNewCampaigns
+                _isEndReached.value = !hasMore
                 _isLoading.value = false
             },
             onError = { error ->

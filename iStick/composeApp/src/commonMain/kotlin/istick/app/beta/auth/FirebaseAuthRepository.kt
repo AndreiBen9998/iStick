@@ -4,7 +4,10 @@ import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.auth.auth
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.awaitClose
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 
 class FirebaseAuthRepository : AuthRepository {
     private val auth = Firebase.auth
@@ -60,5 +63,19 @@ class FirebaseAuthRepository : AuthRepository {
 
     override fun isUserLoggedIn(): Boolean {
         return auth.currentUser != null
+    }
+    override fun observeAuthState(): Flow<Boolean> = callbackFlow {
+        try {
+            val listener = auth.addAuthStateListener { firebaseAuth ->
+                trySend(firebaseAuth.currentUser != null)
+            }
+
+            awaitClose {
+                auth.removeAuthStateListener(listener)
+            }
+        } catch (e: Exception) {
+            // If Firebase isn't initialized yet, just emit false
+            trySend(false)
+        }
     }
 }

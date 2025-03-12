@@ -12,7 +12,6 @@ pluginManagement {
 }
 
 dependencyResolutionManagement {
-    // Changed from FAIL_ON_PROJECT_REPOS to PREFER_SETTINGS
     repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
         google()

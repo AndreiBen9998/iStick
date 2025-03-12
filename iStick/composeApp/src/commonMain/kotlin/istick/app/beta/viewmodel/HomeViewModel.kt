@@ -36,6 +36,9 @@ class HomeViewModel(
     private val _currentUser = MutableStateFlow<User?>(null)
     val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
 
+    private val _isEndReached = MutableStateFlow(false)
+    val isEndReached: StateFlow<Boolean> = _isEndReached.asStateFlow()
+
     init {
         loadUser()
         loadCampaigns()

@@ -1,4 +1,18 @@
 // Android-specific repository implementation with offline support
+package istick.app.beta.repository
+
+import istick.app.beta.data.local.CampaignDao
+import istick.app.beta.data.local.CampaignEntity
+import istick.app.beta.model.Campaign
+import istick.app.beta.model.CampaignApplication
+import istick.app.beta.model.CampaignStatus
+import istick.app.beta.model.PaymentDetails
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
 class AndroidCampaignRepository(
     private val campaignDao: CampaignDao
 ) : CampaignRepository {

@@ -17,6 +17,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import istick.app.beta.model.Campaign
 import androidx.compose.animation.animateItemPlacement
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+
+// Define these variables in an appropriate scope
+private val _isEndReached = MutableStateFlow(false)
+val isEndReached: StateFlow<Boolean> = _isEndReached
+private val isLoading = false // Define this properly based on your app's state
+private fun onLoadMore() {} // Define this function based on your app's logic
 
 @Composable
 fun OptimizedOffersList(

@@ -1,6 +1,16 @@
-// Android-specific implementation for local caching
+package istick.app.beta.data.local
+
 import androidx.room.*
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+import androidx.room.RoomDatabase
+import istick.app.beta.model.Campaign
+import istick.app.beta.model.CampaignStatus
+import istick.app.beta.model.PaymentDetails
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
+
 
 @Entity(tableName = "campaigns")
 data class CampaignEntity(

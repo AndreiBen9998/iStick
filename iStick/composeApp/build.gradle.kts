@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     kotlin("plugin.serialization") version "2.1.0"
+    id("kotlin-kapt")
 }
 
 kotlin {
@@ -58,6 +59,12 @@ kotlin {
             implementation(platform("com.google.firebase:firebase-bom:33.10.0"))
             implementation("com.google.firebase:firebase-auth")
             implementation("com.google.firebase:firebase-storage")
+
+            // Room dependencies - use KSP instead of kapt
+            implementation("androidx.room:room-runtime:2.6.1")
+            implementation("androidx.room:room-ktx:2.6.1")
+            // This line uses KSP instead of kapt
+            ksp("androidx.room:room-compiler:2.6.1")
         }
 
         iosMain.dependencies {
@@ -96,6 +103,9 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.room.common)
+    implementation(libs.androidx.room.ktx)
+    implementation(libs.firebase.perf.ktx)
     debugImplementation(compose.uiTooling)
     implementation("androidx.activity:activity-compose:1.8.0")
 }

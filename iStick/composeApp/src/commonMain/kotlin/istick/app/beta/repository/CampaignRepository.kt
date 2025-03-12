@@ -1,6 +1,7 @@
 // File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/repository/CampaignRepository.kt
 package istick.app.beta.repository
 
+import com.google.firebase.perf.util.Timer
 import istick.app.beta.model.Campaign
 import istick.app.beta.model.CampaignApplication
 import istick.app.beta.model.CampaignStatus
@@ -9,21 +10,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
-
-fun observeActiveCampaigns(): Flow<List<Campaign>>
-/**
- * Repository interface for managing campaigns
- */
-interface CampaignRepository {
-    val activeCampaigns: StateFlow<List<Campaign>>
-    val userApplications: StateFlow<List<CampaignApplication>>
-    
-    suspend fun fetchActiveCampaigns(): Result<List<Campaign>>
-    suspend fun fetchCampaignDetails(campaignId: String): Result<Campaign>
-    suspend fun fetchUserApplications(userId: String): Result<List<CampaignApplication>>
-    suspend fun applyCampaign(campaignId: String, carId: String): Result<CampaignApplication>
-    suspend fun updateCampaignStatus(campaignId: String, status: CampaignStatus): Result<Campaign>
-}
+import kotlinx.coroutines.flow.callbackFlow
+import java.util.Timer
+import java.util.TimerTask
+import kotlinx.coroutines.channels.awaitClose
 
 /**
  * Firebase implementation of the campaign repository
@@ -246,24 +236,18 @@ class FirebaseCampaignRepository : CampaignRepository {
             Result.failure(e)
         }
     }
-    override fun observeActiveCampaigns(): Flow<List<Campaign>> = callbackFlow {
-        try {
-            // In a real implementation, this would use Firestore listeners
-            // For now, we'll simulate with periodic updates
-            val timer = Timer()
-            timer.scheduleAtFixedRate(object : TimerTask() {
-                override fun run() {
-                    fetchActiveCampaigns().onSuccess { campaigns ->
-                        trySend(campaigns)
-                    }
-                }
-            }, 0, 60000) // Every minute
+    fun observeActiveCampaigns(): Flow<List<Campaign>>
+    /**
+     * Repository interface for managing campaigns
+     */
+    interface CampaignRepository {
+        val activeCampaigns: StateFlow<List<Campaign>>
+        val userApplications: StateFlow<List<CampaignApplication>>
 
-            awaitClose { timer.cancel() }
-        } catch (e: Exception) {
-            // Log and emit empty list on error
-            println("Error setting up campaign observer: ${e.message}")
-            trySend(emptyList())
-        }
+        suspend fun fetchActiveCampaigns(): Result<List<Campaign>>
+        suspend fun fetchCampaignDetails(campaignId: String): Result<Campaign>
+        suspend fun fetchUserApplications(userId: String): Result<List<CampaignApplication>>
+        suspend fun applyCampaign(campaignId: String, carId: String): Result<CampaignApplication>
+        suspend fun updateCampaignStatus(campaignId: String, status: CampaignStatus): Result<Campaign>
     }
 }

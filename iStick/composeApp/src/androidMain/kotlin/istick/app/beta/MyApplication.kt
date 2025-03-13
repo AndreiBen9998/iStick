@@ -23,5 +23,8 @@ class MyApplication : Application() {
             println("Error initializing Firebase: ${e.message}")
             e.printStackTrace()
         }
+
+        // Also inform the FirebaseInitializer
+        FirebaseInitializer.initializeWithContext(this)
     }
 }

@@ -3,10 +3,8 @@ package istick.app.beta.camera
 
 import android.Manifest
 import android.app.Activity
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -41,17 +39,10 @@ actual class CameraHelper {
         )
     }
 
-    fun getBytesFromBitmap(bitmap: Bitmap): ByteArray {
+    private fun getBytesFromBitmap(bitmap: Bitmap): ByteArray {
         val stream = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.JPEG, 80, stream)
         return stream.toByteArray()
-    }
-
-    // Launch camera method
-    fun launchCamera(onResult: (Bitmap?) -> Unit) {
-        val act = activity ?: return
-        val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-        act.startActivityForResult(intent, CAMERA_PERMISSION_CODE)
     }
 
     companion object {
@@ -59,7 +50,6 @@ actual class CameraHelper {
     }
 }
 
-// Improved Composable function with proper permission handling
 @Composable
 actual fun rememberCameraLauncher(onPhotoTaken: (ByteArray) -> Unit): () -> Unit {
     val context = LocalContext.current

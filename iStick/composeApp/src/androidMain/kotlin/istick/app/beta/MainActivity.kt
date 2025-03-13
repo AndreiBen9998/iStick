@@ -10,6 +10,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Initialize Firebase
+        FirebaseInitializer.initializeWithContext(applicationContext)
+
         setContent {
             App()
         }

@@ -10,6 +10,7 @@ pluginManagement {
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
         maven("https://maven.pkg.jetbrains.space/kotlin/p/kotlin/dev")
     }
+    // DO NOT add any plugin declarations here
 }
 
 dependencyResolutionManagement {

@@ -10,34 +10,36 @@ actual object FirebaseInitializer {
     private var initialized = false
     private var initializationAttempted = false
 
-    // Firebase is already initialized in MyApplication class
     actual fun initialize() {
         if (!initialized && !initializationAttempted) {
             initializationAttempted = true
             try {
-                // The actual initialization happens in MyApplication.onCreate
-                // This is just to note that initialization was successful
+                // For Android, check if Firebase is already initialized in MyApplication
                 if (FirebaseApp.getInstance() != null) {
                     initialized = true
-                    println("Firebase confirmed as initialized")
+                    println("Firebase already initialized")
                 }
             } catch (e: Exception) {
-                println("Error confirming Firebase initialization: ${e.message}")
+                println("Error checking Firebase initialization: ${e.message}")
                 e.printStackTrace()
             }
         }
     }
 
     actual fun isInitialized(): Boolean {
-        return initialized
+        return initialized || try {
+            FirebaseApp.getInstance() != null
+        } catch (e: Exception) {
+            false
+        }
     }
 
-    // Additional helper for Android to initialize with context if needed
+    // Helper for Android to initialize with context
     fun initializeWithContext(context: Context) {
         if (!initialized && !initializationAttempted) {
             initializationAttempted = true
             try {
-                // First initialize Firebase Android SDK
+                // First initialize Firebase Android SDK if not already initialized
                 if (FirebaseApp.getInstance() == null) {
                     FirebaseApp.initializeApp(context)
                 }

@@ -1,6 +1,15 @@
 // File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/App.kt
 package istick.app.beta
 
+// At the top of App.kt
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
+// Add other icon imports as needed
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -15,11 +24,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import istick.app.beta.auth.FirebaseAuthRepository
+import istick.app.beta.repository.FirebaseUserRepository
 import istick.app.beta.ui.navigation.AppNavigator
 import istick.app.beta.ui.screens.LoginScreen
 import istick.app.beta.ui.screens.MainScreen
 import istick.app.beta.ui.screens.RegistrationScreen
 import istick.app.beta.utils.PerformanceMonitor
+import kotlinx.coroutines.launch
+
 
 @Composable
 fun App() {
@@ -29,27 +41,31 @@ fun App() {
     // Initialize performance monitor
     val performanceMonitor = remember { PerformanceMonitor(context) }
 
-    // Track initialization errors
-    var initError by remember { mutableStateOf<String?>(null) }
+    // Coroutine scope
+    val scope = rememberCoroutineScope()
 
     // Start tracking app startup
     LaunchedEffect(Unit) {
         performanceMonitor.startTrace("app_startup")
 
         // Initialize Firebase
-        runCatching {
-            FirebaseInitializer.initialize()
-        }.onFailure { e ->
-            println("Error initializing Firebase: ${e.message}")
-            // Just log the error instead of storing it
+        scope.launch {
+            try {
+                FirebaseInitializer.initialize()
+            } catch (e: Exception) {
+                println("Error initializing Firebase: ${e.message}")
+            }
         }
     }
 
     // Initialize repositories
     val authRepository = remember { FirebaseAuthRepository() }
+    val userRepository = remember { FirebaseUserRepository(authRepository) }
+
     val appNavigator = remember {
         AppNavigator(
             authRepository = authRepository,
+            userRepository = userRepository,
             performanceMonitor = performanceMonitor
         )
     }
@@ -62,14 +78,13 @@ fun App() {
 
     // Check if user is already logged in on app start
     LaunchedEffect(Unit) {
-        runCatching {
+        try {
             isLoggedIn = authRepository.isUserLoggedIn()
             if (isLoggedIn) {
                 appState = AppState.MAIN
             }
-        }.onFailure { e ->
+        } catch (e: Exception) {
             println("Error checking login status: ${e.message}")
-            // Just log the error instead of storing it
         }
     }
 
@@ -89,7 +104,6 @@ fun App() {
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
-                // Don't wrap this in try-catch, use only parameters that exist
                 LoginScreen(
                     onLoginSuccess = {
                         appState = AppState.MAIN
@@ -98,7 +112,6 @@ fun App() {
                         appState = AppState.REGISTRATION
                     },
                     performanceMonitor = performanceMonitor
-                    // No error parameter here since it doesn't exist
                 )
             }
 
@@ -124,7 +137,6 @@ fun App() {
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
-                // Don't wrap this in try-catch
                 MainScreen(
                     appNavigator = appNavigator,
                     performanceMonitor = performanceMonitor,
@@ -139,9 +151,11 @@ fun App() {
     // Stop performance tracking when app exits
     DisposableEffect(Unit) {
         onDispose {
-            runCatching {
+            try {
                 performanceMonitor.stopTrace("app_startup")
                 performanceMonitor.monitorMemory()
+            } catch (e: Exception) {
+                println("Error stopping performance monitoring: ${e.message}")
             }
         }
     }

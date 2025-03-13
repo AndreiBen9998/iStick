@@ -1,19 +1,19 @@
-// iStick/composeApp/build.gradle.kts
-import org.jetbrains.kotlin.gradle.dsl.KotlinJvmOptions
+import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinAndroidTarget
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     kotlin("plugin.serialization") version "1.9.20"
-    // Simply reference the plugin, don't specify a version
     id("com.google.devtools.ksp")
     id("com.google.gms.google-services")
 }
 
 kotlin {
+    // Explicitly define Android target
     androidTarget {
-        compilations.all {
+        compilations.configureEach {
             kotlinOptions {
                 jvmTarget = "11"
             }
@@ -28,9 +28,9 @@ kotlin {
             implementation(compose.ui)
             implementation(compose.animation)
 
-            // Material Icons - These were missing
-            implementation(compose.material.icons.core)
-            implementation(compose.material.icons.extended)
+            // Use explicit material icons import
+            @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
+            implementation(compose.material3)
 
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
@@ -42,7 +42,7 @@ kotlin {
             implementation("dev.gitlive:firebase-auth:1.10.0")
             implementation("dev.gitlive:firebase-storage:1.10.0")
 
-            // Coroutines - add these explicitly
+            // Coroutines
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")
 
@@ -53,7 +53,7 @@ kotlin {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
 
-            // Android-specific Firebase dependencies
+            // Firebase dependencies
             implementation(platform("com.google.firebase:firebase-bom:33.10.0"))
             implementation("com.google.firebase:firebase-auth-ktx")
             implementation("com.google.firebase:firebase-storage-ktx")
@@ -63,23 +63,11 @@ kotlin {
             implementation("androidx.room:room-runtime:2.6.1")
             implementation("androidx.room:room-ktx:2.6.1")
         }
+
         androidMain {
             kotlin.srcDir("build/generated/ksp/android/androidDebug/kotlin")
         }
     }
-}
-
-// KSP configuration
-dependencies {
-    add("kspAndroid", "androidx.room:room-compiler:2.6.1")
-
-    implementation(libs.androidx.room.common)
-    implementation(libs.androidx.room.ktx)
-    implementation(libs.firebase.perf.ktx)
-    debugImplementation(compose.uiTooling)
-    implementation("androidx.activity:activity-compose:1.8.0")
-    implementation("dev.gitlive:firebase-auth:1.10.0")
-    implementation("dev.gitlive:firebase-common:1.10.0")
 }
 
 android {
@@ -93,18 +81,33 @@ android {
         versionCode = 1
         versionName = "1.0"
     }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+}
+
+dependencies {
+    add("kspAndroid", "androidx.room:room-compiler:2.6.1")
+
+    implementation(libs.androidx.room.common)
+    implementation(libs.androidx.room.ktx)
+    implementation(libs.firebase.perf.ktx)
+    debugImplementation(compose.uiTooling)
+    implementation("androidx.activity:activity-compose:1.8.0")
+    implementation("dev.gitlive:firebase-auth:1.10.0")
+    implementation("dev.gitlive:firebase-common:1.10.0")
 }

@@ -36,6 +36,7 @@ androidx-lifecycle-runtime-compose = { group = "org.jetbrains.androidx.lifecycle
 androidx-room-common = { group = "androidx.room", name = "room-common", version.ref = "roomCommon" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "roomKtx" }
 firebase-perf-ktx = { group = "com.google.firebase", name = "firebase-perf-ktx", version.ref = "firebasePerfKtx" }
+compose-icons-extended = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "compose-multiplatform" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

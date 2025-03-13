@@ -32,6 +32,7 @@ fun CarManagementScreen(
     onBackClick: () -> Unit,
     onAddCarClick: () -> Unit,
     onCarClick: (String) -> Unit,
+    onVerifyMileageClick: (String) -> Unit,  // Add this parameter
     modifier: Modifier = Modifier
 ) {
     // Start performance trace

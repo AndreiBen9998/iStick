@@ -314,7 +314,7 @@ fun MileageVerificationScreen(
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Icon(
-                                        Icons.Default.PhotoCamera,
+                                        Icons.Default.Add,
                                         contentDescription = null,
                                         modifier = Modifier.size(48.dp)
                                     )

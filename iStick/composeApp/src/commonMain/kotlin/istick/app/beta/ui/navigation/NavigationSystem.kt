@@ -146,7 +146,6 @@ fun NavigationSystem(
                         currentScreen = Screen.AddEditCar(carId)
                     },
                     onVerifyMileageClick = { carId ->
-                        // New navigation to mileage verification
                         currentScreen = Screen.MileageVerification(carId)
                     }
                 )

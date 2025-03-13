@@ -1,21 +1,23 @@
-// Android-specific repository implementation with offline support
+// File: iStick/composeApp/src/androidMain/kotlin/istick/app/beta/repository/AndroidCampaignRepository.kt
 package istick.app.beta.repository
 
 import istick.app.beta.data.local.CampaignDao
 import istick.app.beta.data.local.CampaignEntity
-import istick.app.beta.model.Campaign
-import istick.app.beta.model.CampaignApplication
-import istick.app.beta.model.CampaignStatus
-import istick.app.beta.model.PaymentDetails
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.first
+import istick.app.beta.model.*
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class AndroidCampaignRepository(
     private val campaignDao: CampaignDao
-) : CampaignRepository {
+) : FirebaseCampaignRepository.CampaignRepository {
+
+    // State flows for the repository data
+    private val _activeCampaigns = MutableStateFlow<List<Campaign>>(emptyList())
+    override val activeCampaigns: StateFlow<List<Campaign>> = _activeCampaigns
+
+    private val _userApplications = MutableStateFlow<List<CampaignApplication>>(emptyList())
+    override val userApplications: StateFlow<List<CampaignApplication>> = _userApplications
 
     // Map entities to domain models
     private fun CampaignEntity.toDomain(): Campaign {
@@ -29,7 +31,12 @@ class AndroidCampaignRepository(
                 amount = paymentAmount,
                 currency = paymentCurrency
             ),
-            // Map other fields
+            stickerDetails = StickerDetails(), // Default value
+            requirements = CampaignRequirements(), // Default value
+            startDate = null,
+            endDate = null,
+            createdAt = System.currentTimeMillis(),
+            updatedAt = lastUpdated
         )
     }
 
@@ -42,8 +49,8 @@ class AndroidCampaignRepository(
             description = description,
             status = status.name,
             paymentAmount = payment.amount,
-            paymentCurrency = payment.currency
-            // Map other fields
+            paymentCurrency = payment.currency,
+            lastUpdated = System.currentTimeMillis()
         )
     }
 
@@ -53,26 +60,73 @@ class AndroidCampaignRepository(
     }
 
     override suspend fun fetchActiveCampaigns(): Result<List<Campaign>> {
-        // Try to fetch from network
-        try {
-            // For now we'll use mock data
-            val campaigns = getMockCampaigns()
-            // Save to database
-            campaignDao.clearAndInsert(campaigns.map { it.toEntity() })
-            return Result.success(campaigns)
-        } catch (e: Exception) {
-            // Return what's in the database if network fails
-            val cachedCampaigns = campaignDao.observeActiveCampaigns()
-                .first()
-                .map { it.toDomain() }
+        return withContext(Dispatchers.IO) {
+            try {
+                // For mock data
+                val campaigns = createMockCampaigns()
+                // Save to database
+                campaignDao.clearAndInsert(campaigns.map { it.toEntity() })
+                _activeCampaigns.value = campaigns
+                Result.success(campaigns)
+            } catch (e: Exception) {
+                // Return what's in the database if network fails
+                val cachedCampaigns = campaignDao.observeActiveCampaigns()
+                    .first()
+                    .map { it.toDomain() }
 
-            return if (cachedCampaigns.isNotEmpty()) {
-                Result.success(cachedCampaigns)
-            } else {
-                Result.failure(e)
+                if (cachedCampaigns.isNotEmpty()) {
+                    _activeCampaigns.value = cachedCampaigns
+                    Result.success(cachedCampaigns)
+                } else {
+                    Result.failure(e)
+                }
             }
         }
     }
 
-    // Implement other repository methods
+    override suspend fun fetchCampaignDetails(campaignId: String): Result<Campaign> {
+        // Implementation here
+        return Result.failure(Exception("Not implemented"))
+    }
+
+    override suspend fun fetchUserApplications(userId: String): Result<List<CampaignApplication>> {
+        // Implementation here
+        return Result.failure(Exception("Not implemented"))
+    }
+
+    override suspend fun applyCampaign(campaignId: String, carId: String): Result<CampaignApplication> {
+        // Implementation here
+        return Result.failure(Exception("Not implemented"))
+    }
+
+    override suspend fun updateCampaignStatus(campaignId: String, status: CampaignStatus): Result<Campaign> {
+        // Implementation here
+        return Result.failure(Exception("Not implemented"))
+    }
+
+    // Helper method to create mock campaigns
+    private fun createMockCampaigns(): List<Campaign> {
+        return listOf(
+            Campaign(
+                id = "camp1",
+                brandId = "brand1",
+                title = "Sample Campaign 1",
+                description = "This is a sample campaign for testing",
+                status = CampaignStatus.ACTIVE,
+                payment = PaymentDetails(amount = 500.0, currency = "USD"),
+                stickerDetails = StickerDetails(),
+                requirements = CampaignRequirements()
+            ),
+            Campaign(
+                id = "camp2",
+                brandId = "brand2",
+                title = "Sample Campaign 2",
+                description = "Another sample campaign for testing",
+                status = CampaignStatus.ACTIVE,
+                payment = PaymentDetails(amount = 750.0, currency = "USD"),
+                stickerDetails = StickerDetails(),
+                requirements = CampaignRequirements()
+            )
+        )
+    }
 }

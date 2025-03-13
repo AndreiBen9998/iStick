@@ -80,6 +80,8 @@ dependencies {
     implementation(libs.firebase.perf.ktx)
     debugImplementation(compose.uiTooling)
     implementation("androidx.activity:activity-compose:1.8.0")
+    implementation("dev.gitlive:firebase-auth:1.10.0")
+    implementation("dev.gitlive:firebase-common:1.10.0")
 }
 
 android {

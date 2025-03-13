@@ -1,3 +1,4 @@
+// File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/auth/FirebaseAuthRepository.kt
 package istick.app.beta.auth
 
 import dev.gitlive.firebase.Firebase
@@ -64,18 +65,27 @@ class FirebaseAuthRepository : AuthRepository {
     override fun isUserLoggedIn(): Boolean {
         return auth.currentUser != null
     }
+
     override fun observeAuthState(): Flow<Boolean> = callbackFlow {
         try {
-            val listener = auth.addAuthStateListener { firebaseAuth ->
-                trySend(firebaseAuth.currentUser != null)
+            // The gitlive Firebase wrapper provides a way to observe auth state changes
+            // directly via a flow or a suspending function
+
+            // Send the initial state
+            trySend(auth.currentUser != null)
+
+            // Use the authStateChanged flow instead of listeners
+            val subscription = auth.authStateChanged.collect { authState ->
+                trySend(auth.currentUser != null)
             }
 
             awaitClose {
-                auth.removeAuthStateListener(listener)
+                // No explicit listener to remove when using the flow-based approach
             }
         } catch (e: Exception) {
             // If Firebase isn't initialized yet, just emit false
             trySend(false)
+            awaitClose()
         }
     }
 }

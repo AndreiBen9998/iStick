@@ -43,7 +43,11 @@ interface CampaignDao {
     }
 }
 
-@Database(entities = [CampaignEntity::class], version = 1)
+@Database(
+    entities = [CampaignEntity::class],
+    version = 1,
+    exportSchema = false  // Add this line
+)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun campaignDao(): CampaignDao
 }

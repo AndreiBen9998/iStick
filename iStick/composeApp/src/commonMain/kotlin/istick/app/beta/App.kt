@@ -29,6 +29,7 @@ import istick.app.beta.ui.navigation.AppNavigator
 import istick.app.beta.ui.screens.LoginScreen
 import istick.app.beta.ui.screens.MainScreen
 import istick.app.beta.ui.screens.RegistrationScreen
+import istick.app.beta.ui.screens.SplashScreen
 import istick.app.beta.utils.PerformanceMonitor
 import kotlinx.coroutines.launch
 
@@ -73,16 +74,13 @@ fun App() {
     // Track if user is logged in
     var isLoggedIn by remember { mutableStateOf(false) }
 
-    // Track app state
-    var appState by remember { mutableStateOf(AppState.LOGIN) }
+    // Track app state with splash screen
+    var appState by remember { mutableStateOf(AppState.SPLASH) }
 
     // Check if user is already logged in on app start
     LaunchedEffect(Unit) {
         try {
             isLoggedIn = authRepository.isUserLoggedIn()
-            if (isLoggedIn) {
-                appState = AppState.MAIN
-            }
         } catch (e: Exception) {
             println("Error checking login status: ${e.message}")
         }
@@ -98,6 +96,19 @@ fun App() {
             modifier = Modifier.fillMaxSize(),
             color = Color(0xFF0F2030)
         ) {
+            // Splash screen
+            AnimatedVisibility(
+                visible = appState == AppState.SPLASH,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                SplashScreen(
+                    onTimeout = {
+                        appState = if (isLoggedIn) AppState.MAIN else AppState.LOGIN
+                    }
+                )
+            }
+
             // Show login screen or main screen based on auth status
             AnimatedVisibility(
                 visible = appState == AppState.LOGIN,
@@ -161,8 +172,9 @@ fun App() {
     }
 }
 
-// App states
+// App states with added SPLASH state
 enum class AppState {
+    SPLASH,
     LOGIN,
     REGISTRATION,
     MAIN

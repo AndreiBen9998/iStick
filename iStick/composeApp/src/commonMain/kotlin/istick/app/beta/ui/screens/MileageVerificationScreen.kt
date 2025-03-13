@@ -297,7 +297,7 @@ fun MileageVerificationScreen(
                         } else {
                             // Camera button
                             Button(
-                                onClick = cameraLauncher,
+                                onClick = { cameraLauncher() },
                                 colors = ButtonDefaults.buttonColors(
                                     backgroundColor = Color(0xFF1A3B66)
                                 ),

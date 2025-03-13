@@ -5,6 +5,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
@@ -16,15 +17,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import istick.app.beta.model.Campaign
-import androidx.compose.animation.animateItemPlacement
+import istick.app.beta.model.CampaignStatus
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 
 // Define these variables in an appropriate scope
 private val _isEndReached = MutableStateFlow(false)
 val isEndReached: StateFlow<Boolean> = _isEndReached
-private val isLoading = false // Define this properly based on your app's state
-private fun onLoadMore() {} // Define this function based on your app's logic
+private var isLoading = false // Define this properly based on your app's state
+
+// Define this function based on your app's logic
+private fun onLoadMore() {
+    // Implement loading more data logic here
+}
 
 @Composable
 fun OptimizedOffersList(
@@ -57,18 +62,19 @@ fun OptimizedOffersList(
         modifier = modifier
     ) {
         items(
-            items = offers,
-            key = { it.id }
-        ) { offer ->
+            count = offers.size,
+            key = { offers[it].id }
+        ) { index ->
+            val offer = offers[index]
             OfferItemCard(
                 offer = offer,
                 onClick = { onOfferClick(offer) },
-                modifier = Modifier.animateItemPlacement() // Add animation for reordering
+                modifier = Modifier
             )
         }
 
         // Add pagination support
-        if (!isEndReached && !isLoading) {
+        if (!isEndReached.value && !isLoading) {
             item {
                 Box(
                     modifier = Modifier
@@ -77,7 +83,7 @@ fun OptimizedOffersList(
                     contentAlignment = Alignment.Center
                 ) {
                     Button(
-                        onClick = onLoadMore,
+                        onClick = { onLoadMore() },
                         colors = ButtonDefaults.buttonColors(
                             backgroundColor = Color(0xFF2962FF)
                         )
@@ -150,11 +156,12 @@ private fun OfferItemCard(
                 text = "Status: ${offer.status.name}",
                 style = MaterialTheme.typography.caption,
                 color = when(offer.status) {
-                    istick.app.beta.model.CampaignStatus.ACTIVE -> Color(0xFF4CAF50)
-                    istick.app.beta.model.CampaignStatus.DRAFT -> Color(0xFFFF9800)
-                    istick.app.beta.model.CampaignStatus.PAUSED -> Color(0xFFBDBDBD)
-                    istick.app.beta.model.CampaignStatus.COMPLETED -> Color(0xFF2196F3)
-                    istick.app.beta.model.CampaignStatus.CANCELLED -> Color(0xFFF44336)
+                    CampaignStatus.ACTIVE -> Color(0xFF4CAF50)
+                    CampaignStatus.DRAFT -> Color(0xFFFF9800)
+                    CampaignStatus.PAUSED -> Color(0xFFBDBDBD)
+                    CampaignStatus.COMPLETED -> Color(0xFF2196F3)
+                    CampaignStatus.CANCELLED -> Color(0xFFF44336)
+                    else -> Color.Gray
                 }
             )
         }

@@ -14,18 +14,18 @@ class FirebaseCampaignRepository : CampaignRepository {
     // State management
     private val _activeCampaigns = MutableStateFlow<List<Campaign>>(emptyList())
     override val activeCampaigns: StateFlow<List<Campaign>> = _activeCampaigns
-    
+
     private val _userApplications = MutableStateFlow<List<CampaignApplication>>(emptyList())
     override val userApplications: StateFlow<List<CampaignApplication>> = _userApplications
-    
+
     // Cache to reduce network calls
     private val campaignCache = mutableMapOf<String, Campaign>()
     private val applicationCache = mutableMapOf<String, CampaignApplication>()
-    
+
     override fun observeActiveCampaigns(): Flow<List<Campaign>> {
         return _activeCampaigns
     }
-    
+
     override suspend fun fetchActiveCampaigns(): Result<List<Campaign>> = withContext(Dispatchers.Default) {
         try {
             // For now, return mock data
@@ -85,12 +85,12 @@ class FirebaseCampaignRepository : CampaignRepository {
                     endDate = System.currentTimeMillis() + (60L * 24 * 60 * 60 * 1000) // 60 days
                 )
             )
-            
+
             // Update cache
             mockCampaigns.forEach { campaign ->
                 campaignCache[campaign.id] = campaign
             }
-            
+
             _activeCampaigns.value = mockCampaigns
             Result.success(mockCampaigns)
         } catch (e: Exception) {
@@ -98,14 +98,14 @@ class FirebaseCampaignRepository : CampaignRepository {
             Result.failure(e)
         }
     }
-    
+
     override suspend fun fetchCampaignDetails(campaignId: String): Result<Campaign> = withContext(Dispatchers.Default) {
         try {
             // Try to get from cache first
             campaignCache[campaignId]?.let {
                 return@withContext Result.success(it)
             }
-            
+
             // In a real implementation, fetch from Firebase if not in cache
             // For now, return mock data
             val mockCampaign = Campaign(
@@ -118,17 +118,17 @@ class FirebaseCampaignRepository : CampaignRepository {
                 requirements = CampaignRequirements(),
                 status = CampaignStatus.ACTIVE
             )
-            
+
             // Update cache
             campaignCache[campaignId] = mockCampaign
-            
+
             Result.success(mockCampaign)
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Result.failure(e)
         }
     }
-    
+
     override suspend fun fetchUserApplications(userId: String): Result<List<CampaignApplication>> = withContext(Dispatchers.Default) {
         try {
             // For now, return mock data
@@ -148,12 +148,12 @@ class FirebaseCampaignRepository : CampaignRepository {
                     status = ApplicationStatus.APPROVED
                 )
             )
-            
+
             // Update cache
             mockApplications.forEach { application ->
                 applicationCache[application.id] = application
             }
-            
+
             _userApplications.value = mockApplications
             Result.success(mockApplications)
         } catch (e: Exception) {
@@ -161,7 +161,7 @@ class FirebaseCampaignRepository : CampaignRepository {
             Result.failure(e)
         }
     }
-    
+
     override suspend fun applyCampaign(campaignId: String, carId: String): Result<CampaignApplication> = withContext(Dispatchers.Default) {
         try {
             // In a real implementation, this would create a document in Firebase
@@ -173,39 +173,39 @@ class FirebaseCampaignRepository : CampaignRepository {
                 status = ApplicationStatus.PENDING,
                 appliedAt = System.currentTimeMillis()
             )
-            
+
             // Update local cache and state
             applicationCache[newApplication.id] = newApplication
             _userApplications.value = _userApplications.value + newApplication
-            
+
             Result.success(newApplication)
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Result.failure(e)
         }
     }
-    
+
     override suspend fun updateCampaignStatus(campaignId: String, status: CampaignStatus): Result<Campaign> = withContext(Dispatchers.Default) {
         try {
             // Get existing campaign
             val existingCampaign = campaignCache[campaignId] ?: return@withContext Result.failure(
                 Exception("Campaign not found")
             )
-            
+
             // Update status
             val updatedCampaign = existingCampaign.copy(
                 status = status,
                 updatedAt = System.currentTimeMillis()
             )
-            
+
             // Update cache
             campaignCache[campaignId] = updatedCampaign
-            
+
             // Update state
             _activeCampaigns.value = _activeCampaigns.value.map {
                 if (it.id == campaignId) updatedCampaign else it
             }
-            
+
             Result.success(updatedCampaign)
         } catch (e: Exception) {
             if (e is CancellationException) throw e

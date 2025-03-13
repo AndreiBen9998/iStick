@@ -10,7 +10,7 @@ import kotlinx.coroutines.withContext
 
 class AndroidCampaignRepository(
     private val campaignDao: CampaignDao
-) : FirebaseCampaignRepository.CampaignRepository {
+) : CampaignRepository {
 
     // State flows for the repository data
     private val _activeCampaigns = MutableStateFlow<List<Campaign>>(emptyList())

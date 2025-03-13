@@ -28,7 +28,6 @@ import istick.app.beta.ui.screens.CarManagementScreen
 import istick.app.beta.ui.screens.MileageVerificationScreen
 import istick.app.beta.ui.screens.ProfileScreen
 import istick.app.beta.utils.PerformanceMonitor
-import istick.app.beta.viewmodel.MileageVerificationViewModel
 
 /**
  * Main navigation system for the app. Handles the bottom navigation

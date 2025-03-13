@@ -1,6 +1,7 @@
 // File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/ui/components/OptimizedHomeScreen.kt
 package istick.app.beta.ui.components
 
+import androidx.compose.animation.animateColor
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import istick.app.beta.model.Campaign
+import istick.app.beta.model.CampaignStatus
 import istick.app.beta.utils.PerformanceMonitor
 import istick.app.beta.viewmodel.HomeViewModel
 import kotlinx.coroutines.flow.StateFlow
@@ -31,7 +33,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.graphicsLayer
 
@@ -282,7 +283,7 @@ private fun OfferCard(
             }
             .clickable(
                 interactionSource = interactionSource,
-                indication = rememberRipple(bounded = true, color = Color.White.copy(alpha = 0.1f)),
+                indication = null, // Not using ripple here
                 onClick = onClick
             ),
         backgroundColor = Color(0xFF1A3B66),
@@ -385,7 +386,11 @@ private fun PulsatingHeartButton(
                 scaleX = scale
                 scaleY = scale
             }
-            .clickable(onClick = onClick),
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            ),
         contentAlignment = Alignment.Center
     ) {
         Icon(
@@ -406,6 +411,8 @@ private fun AnimatedStatusBadge(status: CampaignStatus) {
         CampaignStatus.PAUSED -> Color(0xFFBDBDBD)
         CampaignStatus.COMPLETED -> Color(0xFF2196F3)
         CampaignStatus.CANCELLED -> Color(0xFFF44336)
+        // Add a default case to ensure when is exhaustive
+        else -> Color.Gray
     }
 
     // Animation for appearing

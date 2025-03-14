@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+        android:width="240dp"
+        android:height="120dp"
+        android:viewportWidth="240"
+        android:viewportHeight="120">
+
+    <!-- Blue vertical bar on left -->
+    <path
+            android:fillColor="#17AFEC"
+            android:pathData="M0,10L32,10L32,110L0,110z" />
+
+    <!-- Text "iStick" in black -->
+    <path
+            android:fillColor="#000000"
+            android:pathData="M100,60 C100,40 100,35 100,30 C110,30 120,45 120,70 C120,95 110,110 95,110 C80,110 70,95 70,77 C70,60 80,45 95,45 Z" /> <!-- 's' -->
+    <path
+            android:fillColor="#000000"
+            android:pathData="M120,30 L140,30 L140,110 L120,110 Z" /> <!-- 't' -->
+    <path
+            android:fillColor="#000000"
+            android:pathData="M130,50 L155,50 L155,60 L130,60 Z" /> <!-- 't' crossbar -->
+    <path
+            android:fillColor="#000000"
+            android:pathData="M160,77 C160,60 170,45 185,45 C200,45 210,60 210,77 C210,95 200,110 185,110 C170,110 160,95 160,77 Z" /> <!-- 'i' -->
+    <path
+            android:fillColor="#000000"
+            android:pathData="M215,45 C225,45 235,50 240,60 L220,70 C218,65 215,60 210,60 C205,60 203,65 205,70 C207,75 215,78 225,85 C235,92 240,98 240,105 C240,115 230,120 215,120 C200,120 190,115 185,105 L205,95 C207,100 210,105 215,105 C220,105 223,100 220,95 C217,90 210,85 200,80 C190,75 185,65 185,58 C185,50 200,45 215,45 Z" /> <!-- 'c' -->
+    <path
+            android:fillColor="#000000"
+            android:pathData="M245,45 L260,45 L280,80 L300,45 L315,45 L285,95 L275,110 L260,110 L270,95 Z" /> <!-- 'k' -->
+
+    <!-- Chameleon in blue -->
+    <path
+            android:fillColor="#17AFEC"
+            android:pathData="M90,20 C75,20 63,32 63,47 C63,62 75,74 90,74 C105,74 117,62 117,47 C117,32 105,20 90,20 Z M95,30 C100,30 103,33 103,38 C103,43 100,46 95,46 C90,46 87,43 87,38 C87,33 90,30 95,30 Z" /> <!-- Head/body -->
+
+    <!-- Eye -->
+    <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M95,38 C97,38 99,36 99,34 C99,32 97,30 95,30 C93,30 91,32 91,34 C91,36 93,38 95,38 Z" />
+    <path
+            android:fillColor="#000000"
+            android:pathData="M95,36 C96,36 97,35 97,34 C97,33 96,32 95,32 C94,32 93,33 93,34 C93,35 94,36 95,36 Z" /> <!-- Pupil -->
+
+    <!-- Tail -->
+    <path
+            android:fillColor="#17AFEC"
+            android:pathData="M80,50 C70,55 65,65 75,70 C85,75 90,65 90,60 C90,55 95,45 100,50 C105,55 100,65 95,65 C90,65 85,60 90,55 C95,50 100,55 100,60" />
+</vector>

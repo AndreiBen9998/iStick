@@ -1,5 +1,3 @@
-// File: iStick/composeApp/src/androidMain/kotlin/istick/app/beta/ui/components/IStickLogo.android.kt
-
 package istick.app.beta.ui.components
 
 import androidx.compose.runtime.Composable
@@ -9,10 +7,10 @@ import istick.app.beta.R
 
 @Composable
 actual fun getLogoIconPainter(): Painter {
-    return painterResource(id = R.drawable.logo_istick)
+    return painterResource(id = R.drawable.istick_logo_fixed)
 }
 
 @Composable
 actual fun getSmallLogoIconPainter(): Painter {
-    return painterResource(id = R.drawable.logo_istick_small)
+    return painterResource(id = R.drawable.istick_logo_small_fixed)
 }

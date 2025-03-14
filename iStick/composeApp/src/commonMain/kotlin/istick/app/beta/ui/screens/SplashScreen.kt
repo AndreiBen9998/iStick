@@ -1,5 +1,3 @@
-// File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/ui/screens/SplashScreen.kt
-
 package istick.app.beta.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility

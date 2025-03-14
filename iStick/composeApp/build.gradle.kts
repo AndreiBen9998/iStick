@@ -33,7 +33,7 @@ kotlin {
             implementation(compose.runtime)
             implementation("androidx.compose.ui:ui-graphics:1.5.4") // Use your current version
             implementation("androidx.compose.ui:ui-util:1.5.4")
-            implementation("androidx.core:core-ktx:1.12.0") // For PathParser
+
 
             // Use explicit material icons import
             @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)

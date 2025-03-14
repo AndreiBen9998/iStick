@@ -1,4 +1,4 @@
-// File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/App.kt
+// File: App.kt
 package istick.app.beta
 
 import androidx.compose.animation.AnimatedVisibility
@@ -20,10 +20,15 @@ import istick.app.beta.ui.navigation.AppNavigator
 import istick.app.beta.ui.screens.LoginScreen
 import istick.app.beta.ui.screens.MainScreen
 import istick.app.beta.ui.screens.RegistrationScreen
-import istick.app.beta.ui.screens.SplashScreen
 import istick.app.beta.utils.PerformanceMonitor
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+// Remove the AppState.SPLASH enum value
+enum class AppState {
+    LOGIN,
+    REGISTRATION,
+    MAIN
+}
 
 @Composable
 fun App() {
@@ -51,8 +56,8 @@ fun App() {
     // Track if user is logged in
     var isLoggedIn by remember { mutableStateOf(false) }
 
-    // Track app state with splash screen
-    var appState by remember { mutableStateOf(AppState.SPLASH) }
+    // Track app state - START WITH LOGIN INSTEAD OF SPLASH
+    var appState by remember { mutableStateOf(AppState.LOGIN) }
 
     // Start tracking app startup and handle initialization
     LaunchedEffect(Unit) {
@@ -63,24 +68,15 @@ fun App() {
             try {
                 FirebaseInitializer.initialize()
 
-                // Ensure we stay in splash screen for minimum time for better UX
-                delay(2000) // Minimum 2 seconds splash screen
-
                 // Check login status
                 isLoggedIn = authRepository.isUserLoggedIn()
 
-                // Move to next screen based on login status
-                if (appState == AppState.SPLASH) {
-                    appState = if (isLoggedIn) AppState.MAIN else AppState.LOGIN
-                }
+                // Set initial screen based on login status
+                appState = if (isLoggedIn) AppState.MAIN else AppState.LOGIN
             } catch (e: Exception) {
                 println("Error initializing Firebase: ${e.message}")
-
-                // Still move to login screen even if there was an error
-                delay(2000)
-                if (appState == AppState.SPLASH) {
-                    appState = AppState.LOGIN
-                }
+                // Default to login screen
+                appState = AppState.LOGIN
             }
         }
     }
@@ -95,19 +91,6 @@ fun App() {
             modifier = Modifier.fillMaxSize(),
             color = Color(0xFF0A1929)
         ) {
-            // Splash screen
-            AnimatedVisibility(
-                visible = appState == AppState.SPLASH,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                SplashScreen(
-                    onTimeout = {
-                        // We handle the transition in the LaunchedEffect above
-                    }
-                )
-            }
-
             // Show login screen or main screen based on auth status
             AnimatedVisibility(
                 visible = appState == AppState.LOGIN,
@@ -169,14 +152,6 @@ fun App() {
             }
         }
     }
-}
-
-// App states with added SPLASH state
-enum class AppState {
-    SPLASH,
-    LOGIN,
-    REGISTRATION,
-    MAIN
 }
 
 // Custom dark color palette with iStick branding

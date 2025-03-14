@@ -8,7 +8,6 @@ plugins {
     kotlin("plugin.serialization") version "1.9.20"
     id("com.google.devtools.ksp")
     id("com.google.gms.google-services")
-    id("org.jetbrains.compose")
 }
 
 kotlin {

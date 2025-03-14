@@ -1,4 +1,5 @@
 // File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/ui/components/IStickLogo.kt
+
 package istick.app.beta.ui.components
 
 import androidx.compose.foundation.Image

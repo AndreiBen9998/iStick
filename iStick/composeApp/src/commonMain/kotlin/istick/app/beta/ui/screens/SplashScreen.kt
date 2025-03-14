@@ -1,4 +1,5 @@
 // File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/ui/screens/SplashScreen.kt
+
 package istick.app.beta.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
@@ -21,11 +22,20 @@ import androidx.compose.ui.unit.sp
 import istick.app.beta.ui.components.IStickLogo
 import kotlinx.coroutines.delay
 
+/**
+ * This composable provides platform-specific customizations for the splash screen
+ */
+@Composable
+expect fun PlatformSplashScreenEffect()
+
 @Composable
 fun SplashScreen(
     onTimeout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Apply platform-specific effects if needed
+    PlatformSplashScreenEffect()
+
     // Animation states
     val scale = remember { Animatable(0.0f) }
     var showTagline by remember { mutableStateOf(false) }

@@ -31,7 +31,7 @@ expect fun getSmallLogoIconPainter(): Painter
 @Composable
 fun IStickLogo(
     modifier: Modifier = Modifier,
-    size: Int = 100
+    size: Int = 180
 ) {
     // Use conditional rendering instead of try-catch
     val useFallback = remember { false } // Set to false to attempt using the real logo

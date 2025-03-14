@@ -8,6 +8,7 @@ plugins {
     kotlin("plugin.serialization") version "1.9.20"
     id("com.google.devtools.ksp")
     id("com.google.gms.google-services")
+    id("org.jetbrains.compose")
 }
 
 kotlin {
@@ -110,4 +111,10 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.8.0")
     implementation("dev.gitlive:firebase-auth:1.10.0")
     implementation("dev.gitlive:firebase-common:1.10.0")
+    implementation(compose.runtime)
+    implementation(compose.foundation)
+    implementation(compose.material)
+    implementation(compose.ui)
+    implementation(compose.animation)
+    implementation(compose.components.resources)
 }

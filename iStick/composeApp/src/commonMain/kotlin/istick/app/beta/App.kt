@@ -1,15 +1,6 @@
 // File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/App.kt
 package istick.app.beta
 
-// At the top of App.kt
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
-// Add other icon imports as needed
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -31,8 +22,8 @@ import istick.app.beta.ui.screens.MainScreen
 import istick.app.beta.ui.screens.RegistrationScreen
 import istick.app.beta.ui.screens.SplashScreen
 import istick.app.beta.utils.PerformanceMonitor
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
 
 @Composable
 fun App() {
@@ -44,20 +35,6 @@ fun App() {
 
     // Coroutine scope
     val scope = rememberCoroutineScope()
-
-    // Start tracking app startup
-    LaunchedEffect(Unit) {
-        performanceMonitor.startTrace("app_startup")
-
-        // Initialize Firebase
-        scope.launch {
-            try {
-                FirebaseInitializer.initialize()
-            } catch (e: Exception) {
-                println("Error initializing Firebase: ${e.message}")
-            }
-        }
-    }
 
     // Initialize repositories
     val authRepository = remember { FirebaseAuthRepository() }
@@ -77,12 +54,34 @@ fun App() {
     // Track app state with splash screen
     var appState by remember { mutableStateOf(AppState.SPLASH) }
 
-    // Check if user is already logged in on app start
+    // Start tracking app startup and handle initialization
     LaunchedEffect(Unit) {
-        try {
-            isLoggedIn = authRepository.isUserLoggedIn()
-        } catch (e: Exception) {
-            println("Error checking login status: ${e.message}")
+        performanceMonitor.startTrace("app_startup")
+
+        // Initialize Firebase
+        scope.launch {
+            try {
+                FirebaseInitializer.initialize()
+
+                // Ensure we stay in splash screen for minimum time for better UX
+                delay(2000) // Minimum 2 seconds splash screen
+
+                // Check login status
+                isLoggedIn = authRepository.isUserLoggedIn()
+
+                // Move to next screen based on login status
+                if (appState == AppState.SPLASH) {
+                    appState = if (isLoggedIn) AppState.MAIN else AppState.LOGIN
+                }
+            } catch (e: Exception) {
+                println("Error initializing Firebase: ${e.message}")
+
+                // Still move to login screen even if there was an error
+                delay(2000)
+                if (appState == AppState.SPLASH) {
+                    appState = AppState.LOGIN
+                }
+            }
         }
     }
 
@@ -94,7 +93,7 @@ fun App() {
     ) {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = Color(0xFF0F2030)
+            color = Color(0xFF0A1929)
         ) {
             // Splash screen
             AnimatedVisibility(
@@ -104,7 +103,7 @@ fun App() {
             ) {
                 SplashScreen(
                     onTimeout = {
-                        appState = if (isLoggedIn) AppState.MAIN else AppState.LOGIN
+                        // We handle the transition in the LaunchedEffect above
                     }
                 )
             }
@@ -180,16 +179,16 @@ enum class AppState {
     MAIN
 }
 
-// Custom dark color palette
+// Custom dark color palette with iStick branding
 private val darkColors = androidx.compose.material.darkColors(
-    primary = Color(0xFF2962FF),
-    primaryVariant = Color(0xFF0039CB),
-    secondary = Color(0xFF00BFA5),
-    background = Color(0xFF0F2030),
-    surface = Color(0xFF1A3B66),
-    error = Color(0xFFFF5252),
+    primary = Color(0xFF1FBDFF),       // iStick blue from logo
+    primaryVariant = Color(0xFF0084BE), // Darker blue variant
+    secondary = Color(0xFF29ABE2),     // Secondary blue from logo
+    background = Color(0xFF0A1929),    // Dark navy background
+    surface = Color(0xFF1A3B66),       // Slightly lighter navy for cards
+    error = Color(0xFFFF5252),         // Error red
     onPrimary = Color.White,
-    onSecondary = Color.Black,
+    onSecondary = Color.White,
     onBackground = Color.White,
     onSurface = Color.White,
     onError = Color.White

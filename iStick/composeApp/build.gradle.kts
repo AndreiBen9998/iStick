@@ -5,11 +5,9 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
-    kotlin("plugin.serialization") version "2.0.0"
+    kotlin("plugin.serialization") version "1.9.22"
     id("com.google.devtools.ksp")
     id("com.google.gms.google-services")
-    // Add this new plugin for Kotlin 2.0 Compose compatibility
-    id("org.jetbrains.kotlin.plugin.compose") version "2.0.0"
 }
 
 kotlin {

@@ -17,14 +17,17 @@ import androidx.compose.ui.platform.LocalContext
 import istick.app.beta.auth.FirebaseAuthRepository
 import istick.app.beta.repository.FirebaseUserRepository
 import istick.app.beta.ui.navigation.AppNavigator
+import istick.app.beta.ui.screens.IntroScreen
 import istick.app.beta.ui.screens.LoginScreen
 import istick.app.beta.ui.screens.MainScreen
 import istick.app.beta.ui.screens.RegistrationScreen
 import istick.app.beta.utils.PerformanceMonitor
+import istick.app.beta.utils.Preferences
 import kotlinx.coroutines.launch
 
-// Remove the AppState.SPLASH enum value
+// Update AppState to include INTRO state
 enum class AppState {
+    INTRO,
     LOGIN,
     REGISTRATION,
     MAIN
@@ -37,6 +40,9 @@ fun App() {
 
     // Initialize performance monitor
     val performanceMonitor = remember { PerformanceMonitor(context) }
+
+    // Initialize preferences
+    val preferences = remember { Preferences() }
 
     // Coroutine scope
     val scope = rememberCoroutineScope()
@@ -56,8 +62,11 @@ fun App() {
     // Track if user is logged in
     var isLoggedIn by remember { mutableStateOf(false) }
 
-    // Track app state - START WITH LOGIN INSTEAD OF SPLASH
-    var appState by remember { mutableStateOf(AppState.LOGIN) }
+    // Track if intro has been shown
+    var hasSeenIntro by remember { mutableStateOf(preferences.hasSeenIntro()) }
+
+    // Track app state - START WITH INTRO if not seen
+    var appState by remember { mutableStateOf(if (hasSeenIntro) AppState.LOGIN else AppState.INTRO) }
 
     // Start tracking app startup and handle initialization
     LaunchedEffect(Unit) {
@@ -71,12 +80,16 @@ fun App() {
                 // Check login status
                 isLoggedIn = authRepository.isUserLoggedIn()
 
-                // Set initial screen based on login status
-                appState = if (isLoggedIn) AppState.MAIN else AppState.LOGIN
+                // Set initial screen based on intro status and login status
+                appState = when {
+                    !hasSeenIntro -> AppState.INTRO
+                    isLoggedIn -> AppState.MAIN
+                    else -> AppState.LOGIN
+                }
             } catch (e: Exception) {
                 println("Error initializing Firebase: ${e.message}")
-                // Default to login screen
-                appState = AppState.LOGIN
+                // Default to intro or login screen
+                appState = if (hasSeenIntro) AppState.LOGIN else AppState.INTRO
             }
         }
     }
@@ -91,7 +104,26 @@ fun App() {
             modifier = Modifier.fillMaxSize(),
             color = Color(0xFF0A1929)
         ) {
-            // Show login screen or main screen based on auth status
+            // Introduction screens
+            AnimatedVisibility(
+                visible = appState == AppState.INTRO,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                IntroScreen(
+                    onFinishIntro = {
+                        // Save that user has seen intro
+                        preferences.setIntroSeen()
+                        hasSeenIntro = true
+
+                        // Navigate to login or main based on login status
+                        appState = if (isLoggedIn) AppState.MAIN else AppState.LOGIN
+                    },
+                    performanceMonitor = performanceMonitor
+                )
+            }
+
+            // Login screen
             AnimatedVisibility(
                 visible = appState == AppState.LOGIN,
                 enter = fadeIn(),
@@ -125,6 +157,7 @@ fun App() {
                 )
             }
 
+            // Main screen
             AnimatedVisibility(
                 visible = appState == AppState.MAIN,
                 enter = fadeIn(),

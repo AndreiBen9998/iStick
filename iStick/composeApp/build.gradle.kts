@@ -5,9 +5,11 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
-    kotlin("plugin.serialization") version "1.9.20"
+    kotlin("plugin.serialization") version "2.0.0"
     id("com.google.devtools.ksp")
     id("com.google.gms.google-services")
+    // Add this new plugin for Kotlin 2.0 Compose compatibility
+    id("org.jetbrains.kotlin.plugin.compose") version "2.0.0"
 }
 
 kotlin {
@@ -45,9 +47,9 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtime.compose)
 
             // Firebase dependencies
-            implementation("dev.gitlive:firebase-common:1.10.0")
-            implementation("dev.gitlive:firebase-auth:1.10.0")
-            implementation("dev.gitlive:firebase-storage:1.10.0")
+            implementation("dev.gitlive:firebase-common:1.11.0")
+            implementation("dev.gitlive:firebase-auth:1.11.0")
+            implementation("dev.gitlive:firebase-storage:1.11.0")
 
             // Coroutines
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")

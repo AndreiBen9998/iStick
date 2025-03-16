@@ -1,4 +1,5 @@
 // File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/repository/OfflineRepositoryWrapper.kt
+
 package istick.app.beta.repository
 
 import istick.app.beta.network.NetworkMonitor
@@ -24,26 +25,26 @@ class OfflineRepositoryWrapper(
 ) {
     // Queue of pending operations to execute when back online
     private val pendingOperations = mutableListOf<PendingOperation>()
-    
+
     // State flows for UI
     private val _isOffline = MutableStateFlow(false)
     val isOffline: StateFlow<Boolean> = _isOffline.asStateFlow()
-    
+
     private val _hasPendingOperations = MutableStateFlow(false)
     val hasPendingOperations: StateFlow<Boolean> = _hasPendingOperations.asStateFlow()
-    
+
     // Number of operations to retry at once
     private val batchSize = 5
-    
+
     init {
         // Start monitoring network state
         networkMonitor.startMonitoring()
-        
+
         // Watch for network state changes
         coroutineScope.launch {
             networkMonitor.isOnline.collectLatest { isOnline ->
                 _isOffline.value = !isOnline
-                
+
                 if (isOnline && pendingOperations.isNotEmpty()) {
                     // We're back online and have pending operations - process them
                     processPendingOperations()
@@ -51,7 +52,7 @@ class OfflineRepositoryWrapper(
             }
         }
     }
-    
+
     /**
      * Execute an operation with offline support
      * If offline, the operation will be queued and executed when back online
@@ -76,7 +77,7 @@ class OfflineRepositoryWrapper(
                     val result = operation()
                     result.fold(
                         onSuccess = { onSuccess(it) },
-                        onFailure = { 
+                        onFailure = {
                             // If operation fails while online, queue it if required
                             if (isRequired) {
                                 queueOperation(key, operation, isRequired, onSuccess, onError)
@@ -96,13 +97,13 @@ class OfflineRepositoryWrapper(
             } else {
                 // We're offline, queue the operation
                 queueOperation(key, operation, isRequired, onSuccess, onError)
-                
+
                 // Notify the user we're offline
                 onError(OfflineException("No network connection. Operation will be executed when online."))
             }
         }
     }
-    
+
     /**
      * Queue an operation to be executed when back online
      */
@@ -115,7 +116,7 @@ class OfflineRepositoryWrapper(
     ) {
         // Remove any existing operation with the same key to prevent duplicates
         pendingOperations.removeAll { it.key == key }
-        
+
         // Add the new operation to the queue
         pendingOperations.add(
             PendingOperation(
@@ -137,11 +138,11 @@ class OfflineRepositoryWrapper(
                 timestamp = System.currentTimeMillis()
             )
         )
-        
+
         // Update UI state
         _hasPendingOperations.value = pendingOperations.isNotEmpty()
     }
-    
+
     /**
      * Process pending operations in batches
      */
@@ -150,7 +151,7 @@ class OfflineRepositoryWrapper(
         while (pendingOperations.isNotEmpty()) {
             // Take a batch of operations
             val batch = pendingOperations.take(batchSize).toList()
-            
+
             // Execute each operation in the batch
             batch.forEach { operation ->
                 try {
@@ -169,15 +170,15 @@ class OfflineRepositoryWrapper(
                     }
                 }
             }
-            
+
             // Update UI state
             _hasPendingOperations.value = pendingOperations.isNotEmpty()
-            
+
             // Small delay between batches
             kotlinx.coroutines.delay(500)
         }
     }
-    
+
     /**
      * Clear all pending operations
      */
@@ -185,21 +186,21 @@ class OfflineRepositoryWrapper(
         pendingOperations.clear()
         _hasPendingOperations.value = false
     }
-    
+
     /**
      * Get the number of pending operations
      */
     fun getPendingOperationsCount(): Int {
         return pendingOperations.size
     }
-    
+
     /**
      * Cleanup resources
      */
     fun cleanup() {
         networkMonitor.stopMonitoring()
     }
-    
+
     /**
      * Represents a pending operation in the queue
      */
@@ -209,7 +210,7 @@ class OfflineRepositoryWrapper(
         val isRequired: Boolean,
         val timestamp: Long
     )
-    
+
     /**
      * Exception thrown when an operation is queued due to being offline
      */

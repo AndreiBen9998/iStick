@@ -1,0 +1,37 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Authenticated users can read any image
+    match /images/{allImages=**} {
+      allow read: if request.auth != null;
+    }
+
+    // Users can only upload to their own directory
+    match /users/{userId}/{allFiles=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Car owners can upload car images
+    match /cars/{carId}/{allFiles=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null &&
+        exists(/databases/$(database)/documents/cars/$(carId)) &&
+        get(/databases/$(database)/documents/cars/$(carId)).data.ownerId == request.auth.uid;
+    }
+
+    // Brands can upload campaign images
+    match /campaigns/{campaignId}/{allFiles=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null &&
+        exists(/databases/$(database)/documents/campaigns/$(campaignId)) &&
+        get(/databases/$(database)/documents/campaigns/$(campaignId)).data.brandId == request.auth.uid;
+    }
+
+    // Verification images - allow any authenticated user to upload
+    match /verifications/{verificationId}/{allFiles=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+  }
+}

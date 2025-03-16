@@ -1,0 +1,70 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Common utility functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Users collection rules
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if false; // Prevent deletion
+    }
+
+    // Cars collection rules
+    match /cars/{carId} {
+      function isCarOwner() {
+        return isSignedIn() && resource.data.ownerId == request.auth.uid;
+      }
+
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isCarOwner();
+      allow delete: if isCarOwner();
+
+      // Verifications subcollection
+      match /verifications/{verificationId} {
+        allow read: if isSignedIn();
+        allow create: if isCarOwner();
+        allow update: if isCarOwner();
+        allow delete: if isCarOwner();
+      }
+    }
+
+    // Campaigns collection rules
+    match /campaigns/{campaignId} {
+      function isBrandOwner() {
+        return isSignedIn() && resource.data.brandId == request.auth.uid;
+      }
+
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isBrandOwner();
+      allow delete: if isBrandOwner();
+    }
+
+    // Applications collection rules
+    match /applications/{applicationId} {
+      function isApplicant() {
+        return isSignedIn() && resource.data.carOwnerId == request.auth.uid;
+      }
+
+      function isCampaignOwner() {
+        return isSignedIn() && exists(/databases/$(database)/documents/campaigns/$(resource.data.campaignId)) &&
+          get(/databases/$(database)/documents/campaigns/$(resource.data.campaignId)).data.brandId == request.auth.uid;
+      }
+
+      allow read: if isApplicant() || isCampaignOwner();
+      allow create: if isSignedIn();
+      allow update: if isApplicant() || isCampaignOwner();
+      allow delete: if false; // Prevent deletion
+    }
+  }
+}

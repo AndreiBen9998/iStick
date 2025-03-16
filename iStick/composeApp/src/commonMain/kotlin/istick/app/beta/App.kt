@@ -1,32 +1,33 @@
-// File: App.kt
+// File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/App.kt
+
 package istick.app.beta
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Surface
-import androidx.compose.material.darkColors
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import istick.app.beta.auth.FirebaseAuthRepository
+import istick.app.beta.di.DependencyInjection
+import istick.app.beta.migration.DataMigrationManager
+import istick.app.beta.migration.DataMigrationManager.MigrationState
+import istick.app.beta.repository.FirebaseCarRepository
+import istick.app.beta.repository.FirebaseCampaignRepository
 import istick.app.beta.repository.FirebaseUserRepository
 import istick.app.beta.ui.navigation.AppNavigator
-import istick.app.beta.ui.screens.IntroScreen
-import istick.app.beta.ui.screens.LoginScreen
-import istick.app.beta.ui.screens.MainScreen
-import istick.app.beta.ui.screens.RegistrationScreen
+import istick.app.beta.ui.screens.*
 import istick.app.beta.utils.PerformanceMonitor
 import istick.app.beta.utils.Preferences
 import kotlinx.coroutines.launch
 
-// Update AppState to include INTRO state
+// Update AppState to include MIGRATION state
 enum class AppState {
+    MIGRATION,
     INTRO,
     LOGIN,
     REGISTRATION,
@@ -35,10 +36,12 @@ enum class AppState {
 
 @Composable
 fun App() {
+    // Start Firebase initialization early
     LaunchedEffect(Unit) {
         FirebaseInitializer.initialize()
     }
-    // Get context
+
+    // Get context - platform-specific
     val context = LocalContext.current
 
     // Initialize performance monitor
@@ -50,49 +53,106 @@ fun App() {
     // Coroutine scope
     val scope = rememberCoroutineScope()
 
+    // App state
+    var appState by remember { mutableStateOf(AppState.INTRO) }
+
+    // Migration state
+    var migrationProgress by remember { mutableStateOf(0) }
+    var migrationError by remember { mutableStateOf<String?>(null) }
+
     // Initialize repositories
-    val authRepository = remember { FirebaseAuthRepository() }
-    val userRepository = remember { FirebaseUserRepository(authRepository) }
+    val authRepository = remember { DependencyInjection.getAuthRepository() }
+    val userRepository = remember { DependencyInjection.getUserRepository() }
+    val appNavigator = remember { DependencyInjection.getAppNavigator() }
+    val networkMonitor = remember { DependencyInjection.getNetworkMonitor() }
+    val analyticsManager = remember { DependencyInjection.getAnalyticsManager() }
 
-    val appNavigator = remember {
-        AppNavigator(
-            authRepository = authRepository,
-            userRepository = userRepository,
-            performanceMonitor = performanceMonitor
-        )
-    }
-
-    // Track if user is logged in
-    var isLoggedIn by remember { mutableStateOf(false) }
-
-    // Track if intro has been shown
-    var hasSeenIntro by remember { mutableStateOf(preferences.hasSeenIntro()) }
-
-    // Track app state - START WITH INTRO if not seen
-    var appState by remember { mutableStateOf(if (hasSeenIntro) AppState.LOGIN else AppState.INTRO) }
-
-    // Start tracking app startup and handle initialization
+    // Start initialization
     LaunchedEffect(Unit) {
         performanceMonitor.startTrace("app_startup")
 
-        // Initialize Firebase
+        // Check if user has seen intro
+        val hasSeenIntro = preferences.hasSeenIntro()
+
+        // Initialize repositories
         scope.launch {
             try {
-                FirebaseInitializer.initialize()
+                // Check if migration is needed
+                val migrationManager = DataMigrationManager(
+                    userRepository = userRepository as FirebaseUserRepository,
+                    carRepository = DependencyInjection.getCarRepository() as FirebaseCarRepository,
+                    campaignRepository = DependencyInjection.getCampaignRepository() as FirebaseCampaignRepository,
+                    storageRepository = DependencyInjection.getStorageRepository()
+                )
 
-                // Check login status
-                isLoggedIn = authRepository.isUserLoggedIn()
+                if (migrationManager.isMigrationNeeded()) {
+                    // Show migration UI
+                    appState = AppState.MIGRATION
 
-                // Set initial screen based on intro status and login status
-                appState = when {
-                    !hasSeenIntro -> AppState.INTRO
-                    isLoggedIn -> AppState.MAIN
-                    else -> AppState.LOGIN
+                    // Start migration with mock data (or retrieve from local storage)
+                    val mockUsers = getMockUsers()
+                    val mockCars = getMockCars()
+                    val mockCampaigns = getMockCampaigns()
+
+                    migrationManager.startMigration(mockUsers, mockCars, mockCampaigns)
+
+                    // Observe migration state
+                    migrationManager.migrationState.collect { state ->
+                        when (state) {
+                            is MigrationState.InProgress -> migrationProgress = state.percentComplete
+                            is MigrationState.Completed -> {
+                                // Check login status and intro status
+                                if (!hasSeenIntro) {
+                                    appState = AppState.INTRO
+                                } else if (authRepository.isUserLoggedIn()) {
+                                    appState = AppState.MAIN
+
+                                    // Track analytics
+                                    analyticsManager.trackLogin("auto")
+                                } else {
+                                    appState = AppState.LOGIN
+                                }
+                            }
+                            is MigrationState.Failed -> {
+                                migrationError = state.error
+                                // If migration fails, proceed to normal flow
+                                if (!hasSeenIntro) {
+                                    appState = AppState.INTRO
+                                } else {
+                                    appState = AppState.LOGIN
+                                }
+                            }
+                            else -> {}
+                        }
+                    }
+                } else {
+                    // No migration needed, proceed with normal flow
+
+                    // Check if user is already logged in
+                    val isLoggedIn = authRepository.isUserLoggedIn()
+
+                    // Set initial screen based on intro status and login status
+                    appState = when {
+                        !hasSeenIntro -> AppState.INTRO
+                        isLoggedIn -> {
+                            // Track auto-login in analytics
+                            analyticsManager.trackLogin("auto")
+                            AppState.MAIN
+                        }
+                        else -> AppState.LOGIN
+                    }
                 }
             } catch (e: Exception) {
-                println("Error initializing Firebase: ${e.message}")
+                println("Error during initialization: ${e.message}")
+
                 // Default to intro or login screen
-                appState = if (hasSeenIntro) AppState.LOGIN else AppState.INTRO
+                appState = if (!hasSeenIntro) AppState.INTRO else AppState.LOGIN
+
+                // Track error
+                analyticsManager.trackError(
+                    errorType = "initialization_error",
+                    errorMessage = e.message ?: "Unknown error"
+                )
             }
         }
     }
@@ -107,6 +167,18 @@ fun App() {
             modifier = Modifier.fillMaxSize(),
             color = Color(0xFF0A1929)
         ) {
+            // Migration screen
+            AnimatedVisibility(
+                visible = appState == AppState.MIGRATION,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                MigrationScreen(
+                    progress = migrationProgress,
+                    error = migrationError
+                )
+            }
+
             // Introduction screens
             AnimatedVisibility(
                 visible = appState == AppState.INTRO,
@@ -117,10 +189,9 @@ fun App() {
                     onFinishIntro = {
                         // Save that user has seen intro
                         preferences.setIntroSeen()
-                        hasSeenIntro = true
 
                         // Navigate to login or main based on login status
-                        appState = if (isLoggedIn) AppState.MAIN else AppState.LOGIN
+                        appState = if (authRepository.isUserLoggedIn()) AppState.MAIN else AppState.LOGIN
                     },
                     performanceMonitor = performanceMonitor
                 )
@@ -134,6 +205,9 @@ fun App() {
             ) {
                 LoginScreen(
                     onLoginSuccess = {
+                        // Track login in analytics
+                        analyticsManager.trackLogin("email")
+
                         appState = AppState.MAIN
                     },
                     onNavigateToRegister = {
@@ -183,11 +257,79 @@ fun App() {
             try {
                 performanceMonitor.stopTrace("app_startup")
                 performanceMonitor.monitorMemory()
+                networkMonitor.stopMonitoring()
             } catch (e: Exception) {
                 println("Error stopping performance monitoring: ${e.message}")
             }
         }
     }
+}
+
+// A simple migration screen component
+@Composable
+fun MigrationScreen(
+    progress: Int,
+    error: String?
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF0A1929)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(32.dp)
+        ) {
+            Text(
+                text = "Migrating Data",
+                style = MaterialTheme.typography.h5,
+                color = Color.White
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            LinearProgressIndicator(
+                progress = progress / 100f,
+                modifier = Modifier.fillMaxWidth(),
+                color = Color(0xFF2962FF)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "$progress%",
+                color = Color.Gray
+            )
+
+            if (error != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Error: $error",
+                    color = Color.Red
+                )
+            }
+        }
+    }
+}
+
+// Helper function to get mock users - in a real app, you'd retrieve these from local storage
+private fun getMockUsers(): List<User> {
+    // Return mock user data
+    return emptyList()
+}
+
+// Helper function to get mock cars - in a real app, you'd retrieve these from local storage
+private fun getMockCars(): List<Car> {
+    // Return mock car data
+    return emptyList()
+}
+
+// Helper function to get mock campaigns - in a real app, you'd retrieve these from local storage
+private fun getMockCampaigns(): List<Campaign> {
+    // Return mock campaign data
+    return emptyList()
 }
 
 // Custom dark color palette with iStick branding

@@ -187,4 +187,216 @@ class EnhancedFirebaseAuthRepository(
             if (e is CancellationException) throw e
 
             // Map Firebase exceptions to our AuthException types
-            val authException = mapFirebaseException(
+            val authException = mapFirebaseException(e)
+            Result.failure(authException)
+        }
+    }
+
+    /**
+     * Update user email
+     */
+    suspend fun updateEmail(newEmail: String): Result<Unit> = withContext(dispatcher) {
+        try {
+            val user = auth.currentUser ?: return@withContext Result.failure(
+                AuthException.UserNotAuthenticated
+            )
+
+            // Validate email
+            if (!isValidEmail(newEmail)) {
+                return@withContext Result.failure(AuthException.InvalidEmail)
+            }
+
+            user.updateEmail(newEmail)
+
+            // Send new verification email
+            try {
+                user.sendEmailVerification()
+            } catch (e: Exception) {
+                // Log but don't fail if email verification fails
+                println("Failed to send verification email: ${e.message}")
+            }
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+
+            // Map Firebase exceptions to our AuthException types
+            val authException = mapFirebaseException(e)
+            Result.failure(authException)
+        }
+    }
+
+    /**
+     * Update user password
+     */
+    suspend fun updatePassword(newPassword: String): Result<Unit> = withContext(dispatcher) {
+        try {
+            val user = auth.currentUser ?: return@withContext Result.failure(
+                AuthException.UserNotAuthenticated
+            )
+
+            // Validate password
+            if (!isStrongPassword(newPassword)) {
+                return@withContext Result.failure(AuthException.WeakPassword)
+            }
+
+            user.updatePassword(newPassword)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+
+            // Map Firebase exceptions to our AuthException types
+            val authException = mapFirebaseException(e)
+            Result.failure(authException)
+        }
+    }
+
+    /**
+     * Delete user account
+     */
+    suspend fun deleteAccount(): Result<Unit> = withContext(dispatcher) {
+        try {
+            val user = auth.currentUser ?: return@withContext Result.failure(
+                AuthException.UserNotAuthenticated
+            )
+
+            user.delete()
+            _authState.value = AuthState.UNAUTHENTICATED
+            _currentUser.value = null
+            _isEmailVerified.value = false
+            Result.success(Unit)
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+
+            // Map Firebase exceptions to our AuthException types
+            val authException = mapFirebaseException(e)
+            Result.failure(authException)
+        }
+    }
+
+    /**
+     * Send email verification
+     */
+    suspend fun sendEmailVerification(): Result<Unit> = withContext(dispatcher) {
+        try {
+            val user = auth.currentUser ?: return@withContext Result.failure(
+                AuthException.UserNotAuthenticated
+            )
+
+            user.sendEmailVerification()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+
+            // Map Firebase exceptions to our AuthException types
+            val authException = mapFirebaseException(e)
+            Result.failure(authException)
+        }
+    }
+
+    /**
+     * Check if email is verified
+     */
+    suspend fun checkEmailVerified(): Result<Boolean> = withContext(dispatcher) {
+        try {
+            val user = auth.currentUser ?: return@withContext Result.failure(
+                AuthException.UserNotAuthenticated
+            )
+
+            // Reload user to get latest verification status
+            user.reload()
+            val isVerified = user.isEmailVerified ?: false
+            _isEmailVerified.value = isVerified
+            Result.success(isVerified)
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+
+            // Map Firebase exceptions to our AuthException types
+            val authException = mapFirebaseException(e)
+            Result.failure(authException)
+        }
+    }
+
+    /**
+     * Get ID token
+     */
+    suspend fun getIdToken(forceRefresh: Boolean = false): Result<String> = withContext(dispatcher) {
+        try {
+            val user = auth.currentUser ?: return@withContext Result.failure(
+                AuthException.UserNotAuthenticated
+            )
+
+            val token = user.getIdToken(forceRefresh)
+            Result.success(token.token ?: "")
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+
+            // Map Firebase exceptions to our AuthException types
+            val authException = mapFirebaseException(e)
+            Result.failure(authException)
+        }
+    }
+
+    /**
+     * Validate email format
+     */
+    private fun isValidEmail(email: String): Boolean {
+        return email.contains("@") && email.contains(".")
+    }
+
+    /**
+     * Validate password strength
+     */
+    private fun isStrongPassword(password: String): Boolean {
+        // At least 6 characters (Firebase requirement)
+        return password.length >= 6
+    }
+
+    /**
+     * Map Firebase exception to AuthException
+     */
+    private fun mapFirebaseException(e: Exception): AuthException {
+        // Map common Firebase exceptions to our typed exceptions
+        return when {
+            e.message?.contains("email address is badly formatted") == true ->
+                AuthException.InvalidEmail
+            e.message?.contains("password is invalid") == true ->
+                AuthException.InvalidCredentials
+            e.message?.contains("no user record") == true ->
+                AuthException.UserNotFound
+            e.message?.contains("email address is already in use") == true ->
+                AuthException.EmailAlreadyInUse
+            e.message?.contains("requires recent authentication") == true ->
+                AuthException.RequiresRecentLogin
+            e.message?.contains("network") == true ||
+                    e.message?.contains("Network") == true ->
+                AuthException.NetworkError
+            else -> AuthException.Unknown(e.message ?: "Unknown error")
+        }
+    }
+}
+
+/**
+ * Authentication state
+ */
+enum class AuthState {
+    UNKNOWN,
+    AUTHENTICATED,
+    UNAUTHENTICATED
+}
+
+/**
+ * Authentication exceptions
+ */
+sealed class AuthException(message: String) : Exception(message) {
+    object InvalidEmail : AuthException("The email address is invalid")
+    object InvalidCredentials : AuthException("The password is invalid")
+    object UserNotFound : AuthException("No user found with this email")
+    object EmailAlreadyInUse : AuthException("The email address is already in use")
+    object WeakPassword : AuthException("The password is too weak")
+    object UserNotAuthenticated : AuthException("User is not authenticated")
+    object EmailNotVerified : AuthException("Email is not verified")
+    object RequiresRecentLogin : AuthException("This operation requires recent authentication")
+    object NetworkError : AuthException("A network error occurred")
+    class Unknown(message: String) : AuthException(message)
+}

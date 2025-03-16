@@ -31,9 +31,8 @@ kotlin {
             implementation(compose.foundation)
             implementation(compose.material)
             implementation(compose.runtime)
-            implementation("androidx.compose.ui:ui-graphics:1.5.4") // Use your current version
+            implementation("androidx.compose.ui:ui-graphics:1.5.4")
             implementation("androidx.compose.ui:ui-util:1.5.4")
-
 
             // Use explicit material icons import
             @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
@@ -44,10 +43,11 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.runtime.compose)
 
-            // Firebase dependencies
+            // Firebase dependencies for Kotlin Multiplatform
             implementation("dev.gitlive:firebase-common:1.11.0")
             implementation("dev.gitlive:firebase-auth:1.11.0")
             implementation("dev.gitlive:firebase-storage:1.11.0")
+            implementation("dev.gitlive:firebase-firestore:1.11.0")
 
             // Coroutines
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
@@ -60,11 +60,12 @@ kotlin {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
 
-            // Firebase dependencies
-            implementation(platform("com.google.firebase:firebase-bom:32.4.0"))
+            // Firebase dependencies using BOM for Android - using a version compatible with Kotlin 1.9
+            implementation(platform("com.google.firebase:firebase-bom:32.2.0"))
             implementation("com.google.firebase:firebase-auth-ktx")
             implementation("com.google.firebase:firebase-storage-ktx")
             implementation("com.google.firebase:firebase-analytics-ktx")
+            implementation("com.google.firebase:firebase-firestore-ktx")
 
             // Room dependencies
             implementation("androidx.room:room-runtime:2.6.1")
@@ -92,6 +93,8 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            // Exclude Kotlin module files that might cause conflicts
+            excludes += "**/META-INF/*.kotlin_module"
         }
     }
 
@@ -112,37 +115,16 @@ dependencies {
 
     implementation(libs.androidx.room.common)
     implementation(libs.androidx.room.ktx)
-    implementation(libs.firebase.perf.ktx)
     debugImplementation(compose.uiTooling)
     implementation("androidx.activity:activity-compose:1.8.0")
-    implementation("dev.gitlive:firebase-auth:1.10.0")
-    implementation("dev.gitlive:firebase-common:1.10.0")
+
+    // Core dependencies for UI
     implementation(compose.runtime)
     implementation(compose.foundation)
     implementation(compose.material)
     implementation(compose.ui)
     implementation(compose.animation)
     implementation(compose.components.resources)
-    // Firebase BOM
-    implementation(platform("com.google.firebase:firebase-bom:33.10.0"))
-
-    // Firebase core
-    implementation("com.google.firebase:firebase-core-ktx")
-
-    // Authentication
-    implementation("com.google.firebase:firebase-auth-ktx")
-
-    // Firestore
-    implementation("com.google.firebase:firebase-firestore-ktx")
-
-    // Storage
-    implementation("com.google.firebase:firebase-storage-ktx")
-
-    // Analytics
-    implementation("com.google.firebase:firebase-analytics-ktx")
-
-    // Performance monitoring
-    implementation("com.google.firebase:firebase-perf-ktx")
 
     // ML Kit for OCR
     implementation("com.google.mlkit:text-recognition:16.0.0")
@@ -151,5 +133,4 @@ dependencies {
     implementation("dev.gitlive:firebase-auth:1.11.0")
     implementation("dev.gitlive:firebase-firestore:1.11.0")
     implementation("dev.gitlive:firebase-storage:1.11.0")
-
 }

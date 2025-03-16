@@ -123,4 +123,33 @@ dependencies {
     implementation(compose.ui)
     implementation(compose.animation)
     implementation(compose.components.resources)
+    // Firebase BOM
+    implementation(platform("com.google.firebase:firebase-bom:33.10.0"))
+
+    // Firebase core
+    implementation("com.google.firebase:firebase-core-ktx")
+
+    // Authentication
+    implementation("com.google.firebase:firebase-auth-ktx")
+
+    // Firestore
+    implementation("com.google.firebase:firebase-firestore-ktx")
+
+    // Storage
+    implementation("com.google.firebase:firebase-storage-ktx")
+
+    // Analytics
+    implementation("com.google.firebase:firebase-analytics-ktx")
+
+    // Performance monitoring
+    implementation("com.google.firebase:firebase-perf-ktx")
+
+    // ML Kit for OCR
+    implementation("com.google.mlkit:text-recognition:16.0.0")
+
+    // GitLive Firebase wrapper for KMM
+    implementation("dev.gitlive:firebase-auth:1.11.0")
+    implementation("dev.gitlive:firebase-firestore:1.11.0")
+    implementation("dev.gitlive:firebase-storage:1.11.0")
+
 }

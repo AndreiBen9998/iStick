@@ -35,6 +35,9 @@ enum class AppState {
 
 @Composable
 fun App() {
+    LaunchedEffect(Unit) {
+        FirebaseInitializer.initialize()
+    }
     // Get context
     val context = LocalContext.current
 

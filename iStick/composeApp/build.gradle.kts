@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
-    kotlin("plugin.serialization") version "1.9.22"
+    kotlin("plugin.serialization") version "1.9.22"  // Make sure this matches your Kotlin version
     id("com.google.devtools.ksp")
     id("com.google.gms.google-services")
 }
@@ -46,8 +46,8 @@ kotlin {
             // Coroutines
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")
-            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
-            implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.6.3")
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.6.2")
         }
 
         androidMain.dependencies {
@@ -113,6 +113,7 @@ dependencies {
 }
 configurations.all {
     resolutionStrategy {
-        force("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+        force("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
+        force("org.jetbrains.kotlinx:kotlinx-serialization-core:1.6.2")
     }
 }

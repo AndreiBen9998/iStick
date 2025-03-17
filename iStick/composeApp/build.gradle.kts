@@ -11,7 +11,6 @@ plugins {
 }
 
 kotlin {
-    // Explicitly define Android target
     androidTarget {
         compilations.configureEach {
             kotlinOptions {
@@ -27,14 +26,9 @@ kotlin {
             implementation(compose.material)
             implementation(compose.ui)
             implementation(compose.animation)
-            implementation(compose.ui)
-            implementation(compose.foundation)
-            implementation(compose.material)
-            implementation(compose.runtime)
-            implementation("androidx.compose.ui:ui-graphics:1.5.4")
-            implementation("androidx.compose.ui:ui-util:1.5.4")
+            implementation("androidx.compose.ui:ui-graphics:1.6.0")
+            implementation("androidx.compose.ui:ui-util:1.6.0")
 
-            // Use explicit material icons import
             @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
             implementation(compose.material3)
 
@@ -43,31 +37,30 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.runtime.compose)
 
-            // Firebase dependencies for Kotlin Multiplatform
-            implementation("dev.gitlive:firebase-common:1.11.0")
-            implementation("dev.gitlive:firebase-auth:1.11.0")
-            implementation("dev.gitlive:firebase-storage:1.11.0")
-            implementation("dev.gitlive:firebase-firestore:1.11.0")
+            // Firebase KMP
+            implementation("dev.gitlive:firebase-common:2.0.0")
+            implementation("dev.gitlive:firebase-auth:2.0.0")
+            implementation("dev.gitlive:firebase-storage:2.0.0")
+            implementation("dev.gitlive:firebase-firestore:2.0.0")
 
             // Coroutines
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")
-
-            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
         }
 
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
 
-            // Firebase dependencies using BOM for Android - using a version compatible with Kotlin 1.9
-            implementation(platform("com.google.firebase:firebase-bom:32.2.0"))
+            // Firebase Android
+            implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
             implementation("com.google.firebase:firebase-auth-ktx")
             implementation("com.google.firebase:firebase-storage-ktx")
             implementation("com.google.firebase:firebase-analytics-ktx")
             implementation("com.google.firebase:firebase-firestore-ktx")
 
-            // Room dependencies
+            // Room
             implementation("androidx.room:room-runtime:2.6.1")
             implementation("androidx.room:room-ktx:2.6.1")
         }
@@ -93,13 +86,12 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
-            // Exclude Kotlin module files that might cause conflicts
             excludes += "**/META-INF/*.kotlin_module"
         }
     }
 
     buildTypes {
-        getByName("release") {
+        named("release") {
             isMinifyEnabled = false
         }
     }
@@ -112,25 +104,9 @@ android {
 
 dependencies {
     add("kspAndroid", "androidx.room:room-compiler:2.6.1")
-
     implementation(libs.androidx.room.common)
     implementation(libs.androidx.room.ktx)
     debugImplementation(compose.uiTooling)
     implementation("androidx.activity:activity-compose:1.8.0")
-
-    // Core dependencies for UI
-    implementation(compose.runtime)
-    implementation(compose.foundation)
-    implementation(compose.material)
-    implementation(compose.ui)
-    implementation(compose.animation)
-    implementation(compose.components.resources)
-
-    // ML Kit for OCR
     implementation("com.google.mlkit:text-recognition:16.0.0")
-
-    // GitLive Firebase wrapper for KMM
-    implementation("dev.gitlive:firebase-auth:1.11.0")
-    implementation("dev.gitlive:firebase-firestore:1.11.0")
-    implementation("dev.gitlive:firebase-storage:1.11.0")
 }

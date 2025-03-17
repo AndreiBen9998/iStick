@@ -326,12 +326,10 @@ class EnhancedFirebaseAuthRepository(
                 AuthException.UserNotAuthenticated
             )
 
-            val token = user.getIdToken(forceRefresh)
-            Result.success(token.token ?: "")
+            val tokenResult = user.getIdToken(forceRefresh)
+            Result.success(tokenResult.idToken ?: "") // Folosește .idToken
         } catch (e: Exception) {
             if (e is CancellationException) throw e
-
-            // Map Firebase exceptions to our AuthException types
             val authException = mapFirebaseException(e)
             Result.failure(authException)
         }

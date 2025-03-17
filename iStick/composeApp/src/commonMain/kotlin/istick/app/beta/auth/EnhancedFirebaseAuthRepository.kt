@@ -327,7 +327,8 @@ class EnhancedFirebaseAuthRepository(
             )
 
             val tokenResult = user.getIdToken(forceRefresh)
-            Result.success(tokenResult.idToken ?: "")
+            // The GitLive Firebase Auth wrapper directly returns the token string
+            Result.success(tokenResult ?: "")
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             val authException = mapFirebaseException(e)

@@ -7,16 +7,17 @@ plugins {
     id("com.google.gms.google-services") version "4.4.0" apply false
 }
 
-// Force consistent Kotlin version across all modules and dependencies
-allprojects {
-    configurations.all {
-        resolutionStrategy {
-            // Force consistent Kotlin version
-            force("org.jetbrains.kotlin:kotlin-stdlib:1.9.22")
-            force("org.jetbrains.kotlin:kotlin-stdlib-common:1.9.22")
-            force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.22")
-            force("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.22")
-            force("org.jetbrains.kotlin:kotlin-reflect:1.9.22")
-        }
+configurations.all {
+    resolutionStrategy {
+        // Force consistent Kotlin version
+        force("org.jetbrains.kotlin:kotlin-stdlib:1.9.22")
+        force("org.jetbrains.kotlin:kotlin-stdlib-common:1.9.22")
+        force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.22")
+        force("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.22")
+        force("org.jetbrains.kotlin:kotlin-reflect:1.9.22")
+
+        // Force consistent kotlinx.serialization version
+        force("org.jetbrains.kotlinx:kotlinx-serialization-core:1.6.2")
+        force("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
     }
 }

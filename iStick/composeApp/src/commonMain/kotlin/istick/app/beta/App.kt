@@ -46,7 +46,9 @@ fun App() {
     }
 
     // Platform-specific context handling
-    val platformContext = remember { getPlatformContextComposable() }
+// Get the platform context
+    val platformContext = getPlatformContextComposable()
+
 
     // Initialize performance monitor
     val performanceMonitor = remember {

@@ -327,7 +327,7 @@ class EnhancedFirebaseAuthRepository(
             )
 
             val tokenResult = user.getIdToken(forceRefresh)
-            Result.success(tokenResult.idToken ?: "") // Folosește .idToken
+            Result.success(tokenResult.idToken ?: "")
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             val authException = mapFirebaseException(e)

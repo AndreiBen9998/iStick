@@ -1,4 +1,3 @@
-// File: iStick/composeApp/src/androidMain/kotlin/istick/app/beta/analytics/FirebaseAnalyticsManager.kt
 package istick.app.beta.analytics
 
 import android.content.Context
@@ -18,40 +17,40 @@ class FirebaseAnalyticsManager(
     private val context: Context
 ) : AnalyticsManager {
     private val firebaseAnalytics: FirebaseAnalytics = Firebase.analytics
-    
+
     override fun setUserProperties(userId: String, userType: UserType, properties: Map<String, String>) {
         // Set user ID
         firebaseAnalytics.setUserId(userId)
-        
+
         // Set user type
         firebaseAnalytics.setUserProperty("user_type", userType.name)
-        
+
         // Set additional properties
         properties.forEach { (key, value) ->
             firebaseAnalytics.setUserProperty(key, value)
         }
     }
-    
+
     override fun trackScreenView(screenName: String, screenClass: String) {
         firebaseAnalytics.logEvent(FirebaseAnalytics.Event.SCREEN_VIEW) {
             param(FirebaseAnalytics.Param.SCREEN_NAME, screenName)
             param(FirebaseAnalytics.Param.SCREEN_CLASS, screenClass)
         }
     }
-    
+
     override fun trackRegistration(userType: UserType, method: String) {
         firebaseAnalytics.logEvent(FirebaseAnalytics.Event.SIGN_UP) {
             param(FirebaseAnalytics.Param.METHOD, method)
             param("user_type", userType.name)
         }
     }
-    
+
     override fun trackLogin(method: String) {
         firebaseAnalytics.logEvent(FirebaseAnalytics.Event.LOGIN) {
             param(FirebaseAnalytics.Param.METHOD, method)
         }
     }
-    
+
     override fun trackCarAdded(car: Car) {
         firebaseAnalytics.logEvent("car_added") {
             param("car_make", car.make)
@@ -60,7 +59,7 @@ class FirebaseAnalyticsManager(
             param("car_color", car.color)
         }
     }
-    
+
     override fun trackMileageVerification(car: Car, newMileage: Int, verificationMethod: String) {
         firebaseAnalytics.logEvent("mileage_verification") {
             param("car_id", car.id)
@@ -71,7 +70,7 @@ class FirebaseAnalyticsManager(
             param("verification_method", verificationMethod)
         }
     }
-    
+
     override fun trackCampaignView(campaign: Campaign) {
         firebaseAnalytics.logEvent(FirebaseAnalytics.Event.VIEW_ITEM) {
             param(FirebaseAnalytics.Param.ITEM_ID, campaign.id)
@@ -83,7 +82,7 @@ class FirebaseAnalyticsManager(
             param("payment_currency", campaign.payment.currency)
         }
     }
-    
+
     override fun trackCampaignApplication(campaign: Campaign, car: Car) {
         firebaseAnalytics.logEvent("campaign_application") {
             param("campaign_id", campaign.id)
@@ -95,7 +94,7 @@ class FirebaseAnalyticsManager(
             param("car_year", car.year.toLong())
         }
     }
-    
+
     override fun trackCampaignCreated(campaign: Campaign) {
         firebaseAnalytics.logEvent("campaign_created") {
             param("campaign_id", campaign.id)
@@ -109,33 +108,36 @@ class FirebaseAnalyticsManager(
             param("cities_count", campaign.requirements.cities.size.toLong())
         }
     }
-    
+
     override fun trackApplicationReview(campaignId: String, approved: Boolean) {
         firebaseAnalytics.logEvent("application_review") {
             param("campaign_id", campaignId)
-            param("approved", approved)
+            param("approved", if (approved) 1L else 0L)
         }
     }
-    
+
     override fun trackAdRevenue(campaignId: String, amount: Double, currency: String) {
-        firebaseAnalytics.logEvent("ad_revenue") {
-            param("campaign_id", campaignId)
+        firebaseAnalytics.logEvent(FirebaseAnalytics.Event.AD_IMPRESSION) {
+            param(FirebaseAnalytics.Param.ITEM_ID, campaignId)
             param(FirebaseAnalytics.Param.VALUE, amount)
             param(FirebaseAnalytics.Param.CURRENCY, currency)
         }
     }
-    
+
     override fun trackError(errorType: String, errorMessage: String, screenName: String?) {
         firebaseAnalytics.logEvent("app_error") {
-            param(FirebaseAnalytics.Param.ITEM_ID, errorType)
-            // Or create custom parameters using the right method:
-            param("error_message", errorMessage.take(100)) // Limiting string length may help
+            param("error_type", errorType)
+            param("error_message", errorMessage)
+            if (screenName != null) {
+                param("screen_name", screenName)
+            }
+        }
     }
-    
+
     override fun trackFeatureUsed(featureName: String, parameters: Map<String, Any>) {
         firebaseAnalytics.logEvent("feature_used") {
             param("feature_name", featureName)
-            
+
             // Add additional parameters
             parameters.forEach { (key, value) ->
                 when (value) {
@@ -143,22 +145,26 @@ class FirebaseAnalyticsManager(
                     is Int -> param(key, value.toLong())
                     is Long -> param(key, value)
                     is Double -> param(key, value)
-                    is Boolean -> param(key, value)
+                    is Boolean -> param(key, if (value) 1L else 0L)
                     else -> param(key, value.toString())
                 }
             }
         }
     }
-}
 
-actual fun createAnalyticsManager(): AnalyticsManager {
-    // This is just a stub - in real implementation, we need context
-    throw IllegalStateException("Context must be provided for Android AnalyticsManager")
+    companion object {
+        /**
+         * Create analytics manager with Android context
+         */
+        fun create(context: Context): AnalyticsManager {
+            return FirebaseAnalyticsManager(context)
+        }
+    }
 }
 
 /**
- * Create analytics manager with Android context
+ * Platform-specific implementation
  */
-fun createAnalyticsManager(context: Context): AnalyticsManager {
-    return FirebaseAnalyticsManager(context)
-}}
+actual fun createAnalyticsManager(): AnalyticsManager {
+    throw IllegalStateException("Context must be provided for Android AnalyticsManager")
+}

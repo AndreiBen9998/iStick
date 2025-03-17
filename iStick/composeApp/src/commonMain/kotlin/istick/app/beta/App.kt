@@ -12,10 +12,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import istick.app.beta.auth.FirebaseAuthRepository
 import istick.app.beta.di.DependencyInjection
 import istick.app.beta.migration.DataMigrationManager
 import istick.app.beta.migration.DataMigrationManager.MigrationState
+import istick.app.beta.model.Campaign
+import istick.app.beta.model.Car
+import istick.app.beta.model.User
 import istick.app.beta.repository.FirebaseCarRepository
 import istick.app.beta.repository.FirebaseCampaignRepository
 import istick.app.beta.repository.FirebaseUserRepository
@@ -24,11 +28,6 @@ import istick.app.beta.ui.screens.*
 import istick.app.beta.utils.PerformanceMonitor
 import istick.app.beta.utils.Preferences
 import kotlinx.coroutines.launch
-import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.remember
-import istick.app.beta.model.Car
-import istick.app.beta.model.User
-import istick.app.beta.model.Campaign
 
 // Update AppState to include MIGRATION state
 enum class AppState {
@@ -46,11 +45,13 @@ fun App() {
         FirebaseInitializer.initialize()
     }
 
-    // Get context - platform-specific
-    val context = LocalContext.current
+    // Platform-specific context handling
+    val platformContext = remember { getPlatformContextComposable() }
 
     // Initialize performance monitor
-    val performanceMonitor = remember { PerformanceMonitor(context) }
+    val performanceMonitor = remember {
+        PerformanceMonitor(platformContext)
+    }
 
     // Initialize preferences
     val preferences = remember { Preferences() }
@@ -270,7 +271,7 @@ fun App() {
     }
 }
 
-// A simple migration screen component
+// Placeholder migration screen
 @Composable
 fun MigrationScreen(
     progress: Int,
@@ -307,11 +308,10 @@ fun MigrationScreen(
                 color = Color.Gray
             )
 
-            if (error != null) {
+            error?.let {
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text(
-                    text = "Error: $error",
+                Text(text = "Error: $it",
                     color = Color.Red
                 )
             }

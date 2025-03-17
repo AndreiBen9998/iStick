@@ -17,8 +17,10 @@ import istick.app.beta.ui.navigation.AppNavigator
  * Service locator pattern for dependency injection
  */
 object DependencyInjection {
-    // Platform-specific dependencies (initialized in platform-specific code)
+    // Platform-specific dependencies
+    @Volatile
     private var platformContext: Any? = null
+
     private var networkMonitor: NetworkMonitor? = null
     private var analyticsManager: AnalyticsManager? = null
     private var ocrProcessor: OcrProcessor? = null
@@ -61,7 +63,30 @@ object DependencyInjection {
         )
     }
 
-    // Initialize platform-specific dependencies
+    /**
+     * Set the platform-specific context
+     * @param context Platform-specific context object
+     */
+    @Synchronized
+    fun setPlatformContext(context: Any) {
+        platformContext = context
+    }
+
+    /**
+     * Get the platform-specific context
+     * @return Platform-specific context or null
+     */
+    @Synchronized
+    fun getPlatformContext(): Any? = platformContext
+
+    /**
+     * Initialize platform-specific dependencies
+     * @param context Platform-specific context
+     * @param networkMonitor Network monitoring implementation
+     * @param analyticsManager Analytics manager implementation
+     * @param ocrProcessor OCR processor implementation
+     * @param performanceMonitor Performance monitoring implementation
+     */
     fun initPlatformDependencies(
         context: Any,
         networkMonitor: NetworkMonitor,
@@ -69,7 +94,10 @@ object DependencyInjection {
         ocrProcessor: OcrProcessor,
         performanceMonitor: PerformanceMonitor
     ) {
+        // Set platform context
         this.platformContext = context
+
+        // Initialize other platform-specific dependencies
         this.networkMonitor = networkMonitor
         this.analyticsManager = analyticsManager
         this.ocrProcessor = ocrProcessor
@@ -79,7 +107,9 @@ object DependencyInjection {
         networkMonitor.startMonitoring()
     }
 
-    // Initialize repositories
+    /**
+     * Initialize repositories
+     */
     fun initRepositories() {
         // Trigger lazy initialization
         val auth = authRepository
@@ -95,15 +125,30 @@ object DependencyInjection {
     fun getCarRepository(): CarRepository = carRepository
     fun getCampaignRepository(): CampaignRepository = campaignRepository
     fun getStorageRepository(): StorageRepository = storageRepository
-    fun getNetworkMonitor(): NetworkMonitor = networkMonitor ?: throw IllegalStateException("NetworkMonitor not initialized")
-    fun getAnalyticsManager(): AnalyticsManager = analyticsManager ?: throw IllegalStateException("AnalyticsManager not initialized")
-    fun getOcrProcessor(): OcrProcessor = ocrProcessor ?: throw IllegalStateException("OcrProcessor not initialized")
-    fun getPerformanceMonitor(): PerformanceMonitor = performanceMonitor ?: throw IllegalStateException("PerformanceMonitor not initialized")
-    fun getAppNavigator(): AppNavigator = appNavigator
-    fun getOfflineRepositoryWrapper(): OfflineRepositoryWrapper = offlineRepositoryWrapper ?: throw IllegalStateException("NetworkMonitor not initialized")
 
-    // Cleanup resources
+    fun getNetworkMonitor(): NetworkMonitor =
+        networkMonitor ?: throw IllegalStateException("NetworkMonitor not initialized")
+
+    fun getAnalyticsManager(): AnalyticsManager =
+        analyticsManager ?: throw IllegalStateException("AnalyticsManager not initialized")
+
+    fun getOcrProcessor(): OcrProcessor =
+        ocrProcessor ?: throw IllegalStateException("OcrProcessor not initialized")
+
+    fun getPerformanceMonitor(): PerformanceMonitor =
+        performanceMonitor ?: throw IllegalStateException("PerformanceMonitor not initialized")
+
+    fun getAppNavigator(): AppNavigator = appNavigator
+
+    fun getOfflineRepositoryWrapper(): OfflineRepositoryWrapper =
+        offlineRepositoryWrapper ?: throw IllegalStateException("NetworkMonitor not initialized")
+
+    /**
+     * Cleanup resources
+     */
     fun cleanup() {
         networkMonitor?.stopMonitoring()
+        // Add any additional cleanup logic for other dependencies
+        platformContext = null
     }
 }

@@ -46,8 +46,8 @@ kotlin {
             // Coroutines
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")
-            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
-            implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.6.2")
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.6.3")
         }
 
         androidMain.dependencies {
@@ -110,4 +110,9 @@ dependencies {
     debugImplementation(compose.uiTooling)
     implementation("androidx.activity:activity-compose:1.8.0")
     implementation("com.google.mlkit:text-recognition:16.0.0")
+}
+configurations.all {
+    resolutionStrategy {
+        force("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+    }
 }

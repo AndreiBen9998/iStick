@@ -14,6 +14,7 @@ import kotlin.math.min
 /**
  * Firebase Storage implementation for handling file storage
  */
+expect fun FirebaseStorageRepository.compressPlatformImage(imageBytes: ByteArray, quality: Int): ByteArray
 class FirebaseStorageRepository(
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default
 ) : StorageRepository {

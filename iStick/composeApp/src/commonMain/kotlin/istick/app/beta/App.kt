@@ -24,6 +24,11 @@ import istick.app.beta.ui.screens.*
 import istick.app.beta.utils.PerformanceMonitor
 import istick.app.beta.utils.Preferences
 import kotlinx.coroutines.launch
+import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.remember
+import istick.app.beta.model.Car
+import istick.app.beta.model.User
+import istick.app.beta.model.Campaign
 
 // Update AppState to include MIGRATION state
 enum class AppState {

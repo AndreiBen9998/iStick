@@ -127,12 +127,9 @@ class FirebaseAnalyticsManager(
     
     override fun trackError(errorType: String, errorMessage: String, screenName: String?) {
         firebaseAnalytics.logEvent("app_error") {
-            param("error_type", errorType)
-            param("error_message", errorMessage)
-            if (screenName != null) {
-                param("screen_name", screenName)
-            }
-        }
+            param(FirebaseAnalytics.Param.ITEM_ID, errorType)
+            // Or create custom parameters using the right method:
+            param("error_message", errorMessage.take(100)) // Limiting string length may help
     }
     
     override fun trackFeatureUsed(featureName: String, parameters: Map<String, Any>) {
@@ -164,4 +161,4 @@ actual fun createAnalyticsManager(): AnalyticsManager {
  */
 fun createAnalyticsManager(context: Context): AnalyticsManager {
     return FirebaseAnalyticsManager(context)
-}
+}}

@@ -2,6 +2,7 @@
 package istick.app.beta.repository
 
 import dev.gitlive.firebase.Firebase
+import dev.gitlive.firebase.firestore.DocumentSnapshot
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import dev.gitlive.firebase.firestore.firestore
 import istick.app.beta.auth.AuthRepository
@@ -197,14 +198,14 @@ class FirebaseCampaignRepository(
                 _userApplications.value = _userApplications.value + application
 
                 // Add applicant to campaign's applicants list
-                val campaignDoc = campaignsCollection.document(campaignId).get<Map<String, Any>?>()
+                val campaignDocRef = campaignsCollection.document(campaignId)
+                val campaignDoc = campaignDocRef.get()
 
-                // Process applicants list carefully to avoid type inference issues
-                val campaignData = campaignDoc?.data()
+                // Process applicants list safely
                 val currentApplicants = mutableListOf<String>()
-
-                if (campaignData != null) {
-                    val applicantsObj = campaignData["applicants"]
+                if (campaignDoc.exists) {
+                    val rawData = campaignDoc.data()
+                    val applicantsObj = rawData?.get("applicants")
                     if (applicantsObj is List<*>) {
                         for (item in applicantsObj) {
                             if (item is String) {
@@ -218,9 +219,7 @@ class FirebaseCampaignRepository(
                 if (!currentApplicants.contains(userId)) {
                     val updatedApplicants = ArrayList<String>(currentApplicants)
                     updatedApplicants.add(userId)
-                    campaignsCollection.document(campaignId).update(
-                        mapOf("applicants" to updatedApplicants)
-                    )
+                    campaignDocRef.update(mapOf("applicants" to updatedApplicants))
                 }
 
                 Result.success(application)
@@ -234,13 +233,15 @@ class FirebaseCampaignRepository(
         withContext(dispatcher) {
             try {
                 // Check if campaign exists
-                val campaignDoc = campaignsCollection.document(campaignId).get<Map<String, Any>?>()
-                if (campaignDoc == null || !campaignDoc.exists) {
+                val campaignDocRef = campaignsCollection.document(campaignId)
+                val campaignDoc = campaignDocRef.get()
+
+                if (!campaignDoc.exists) {
                     return@withContext Result.failure(Exception("Campaign not found"))
                 }
 
                 // Update status
-                campaignsCollection.document(campaignId).update(
+                campaignDocRef.update(
                     mapOf(
                         "status" to status.name,
                         "updatedAt" to System.currentTimeMillis()
@@ -248,8 +249,8 @@ class FirebaseCampaignRepository(
                 )
 
                 // Get updated campaign
-                val updatedCampaignDoc = campaignsCollection.document(campaignId).get<Map<String, Any>?>()
-                val updatedCampaign = parseCampaignDocument(updatedCampaignDoc!!)
+                val updatedCampaignDoc = campaignDocRef.get()
+                val updatedCampaign = parseCampaignDocument(updatedCampaignDoc)
 
                 // Update cache
                 campaignCache[campaignId] = updatedCampaign
@@ -490,13 +491,15 @@ class FirebaseCampaignRepository(
     ): Result<CampaignApplication> = withContext(dispatcher) {
         try {
             // Fetch application
-            val applicationDoc = applicationsCollection.document(applicationId).get<Map<String, Any>?>()
-            if (applicationDoc == null || !applicationDoc.exists) {
+            val applicationDocRef = applicationsCollection.document(applicationId)
+            val applicationDoc = applicationDocRef.get()
+
+            if (!applicationDoc.exists) {
                 return@withContext Result.failure(Exception("Application not found"))
             }
 
             // Update status
-            applicationsCollection.document(applicationId).update(
+            applicationDocRef.update(
                 mapOf(
                     "status" to status.name,
                     "updatedAt" to System.currentTimeMillis()
@@ -505,20 +508,20 @@ class FirebaseCampaignRepository(
 
             // If status is APPROVED, add to campaign's approved applicants
             if (status == ApplicationStatus.APPROVED) {
-                val applicationData = applicationDoc.data()
-                val campaignId = applicationData?.get("campaignId") as? String ?: ""
-                val carOwnerId = applicationData?.get("carOwnerId") as? String ?: ""
+                val rawData = applicationDoc.data()
+                val campaignId = rawData?.get("campaignId") as? String ?: ""
+                val carOwnerId = rawData?.get("carOwnerId") as? String ?: ""
 
                 if (campaignId.isNotEmpty() && carOwnerId.isNotEmpty()) {
                     // Get current approved applicants
-                    val campaignDoc = campaignsCollection.document(campaignId).get<Map<String, Any>?>()
+                    val campaignDocRef = campaignsCollection.document(campaignId)
+                    val campaignDoc = campaignDocRef.get()
 
                     // Extract and process approved applicants
-                    val campaignData = campaignDoc?.data()
                     val currentApprovedApplicants = mutableListOf<String>()
-
-                    if (campaignData != null) {
-                        val approvedApplicantsObj = campaignData["approvedApplicants"]
+                    if (campaignDoc.exists) {
+                        val campaignData = campaignDoc.data()
+                        val approvedApplicantsObj = campaignData?.get("approvedApplicants")
                         if (approvedApplicantsObj is List<*>) {
                             for (item in approvedApplicantsObj) {
                                 if (item is String) {
@@ -532,7 +535,7 @@ class FirebaseCampaignRepository(
                     if (!currentApprovedApplicants.contains(carOwnerId)) {
                         val updatedApprovedApplicants = ArrayList<String>(currentApprovedApplicants)
                         updatedApprovedApplicants.add(carOwnerId)
-                        campaignsCollection.document(campaignId).update(
+                        campaignDocRef.update(
                             mapOf("approvedApplicants" to updatedApprovedApplicants)
                         )
                     }
@@ -540,8 +543,8 @@ class FirebaseCampaignRepository(
             }
 
             // Parse updated application
-            val updatedApplicationDoc = applicationsCollection.document(applicationId).get<Map<String, Any>?>()
-            val updatedApplication = parseApplicationDocument(updatedApplicationDoc!!)
+            val updatedApplicationDoc = applicationDocRef.get()
+            val updatedApplication = parseApplicationDocument(updatedApplicationDoc)
 
             // Update cache
             applicationCache[applicationId] = updatedApplication
@@ -628,28 +631,28 @@ class FirebaseCampaignRepository(
      * Parse a campaign document from Firestore
      * This method carefully extracts and converts the Firestore data to the Campaign model
      */
-    private fun parseCampaignDocument(doc: dev.gitlive.firebase.firestore.DocumentSnapshot): Campaign {
+    private fun parseCampaignDocument(doc: DocumentSnapshot): Campaign {
         // Get basic fields
         val campaignId = doc.id
-        val data = doc.data() ?: mapOf<String, Any>()
+        val rawData = doc.data()
 
         // Use safe getters with proper type casting
-        val brandId = data["brandId"] as? String ?: ""
-        val title = data["title"] as? String ?: ""
-        val description = data["description"] as? String ?: ""
-        val statusString = data["status"] as? String ?: CampaignStatus.DRAFT.name
+        val brandId = rawData?.get("brandId") as? String ?: ""
+        val title = rawData?.get("title") as? String ?: ""
+        val description = rawData?.get("description") as? String ?: ""
+        val statusString = rawData?.get("status") as? String ?: CampaignStatus.DRAFT.name
         val status = try {
             CampaignStatus.valueOf(statusString)
         } catch (e: Exception) {
             CampaignStatus.DRAFT
         }
-        val startDate = data["startDate"] as? Long
-        val endDate = data["endDate"] as? Long
-        val createdAt = data["createdAt"] as? Long ?: System.currentTimeMillis()
-        val updatedAt = data["updatedAt"] as? Long ?: System.currentTimeMillis()
+        val startDate = rawData?.get("startDate") as? Long
+        val endDate = rawData?.get("endDate") as? Long
+        val createdAt = rawData?.get("createdAt") as? Long ?: System.currentTimeMillis()
+        val updatedAt = rawData?.get("updatedAt") as? Long ?: System.currentTimeMillis()
 
         // Get nested sticker details
-        val stickerDetailsMap = data["stickerDetails"] as? Map<*, *> ?: emptyMap<String, Any>()
+        val stickerDetailsMap = rawData?.get("stickerDetails") as? Map<*, *> ?: emptyMap<String, Any>()
 
         val stickerImageUrl = stickerDetailsMap["imageUrl"] as? String ?: ""
         val stickerWidth = (stickerDetailsMap["width"] as? Number)?.toInt() ?: 0
@@ -688,7 +691,7 @@ class FirebaseCampaignRepository(
         )
 
         // Get nested payment details
-        val paymentMap = data["payment"] as? Map<*, *> ?: emptyMap<String, Any>()
+        val paymentMap = rawData?.get("payment") as? Map<*, *> ?: emptyMap<String, Any>()
 
         val paymentAmount = (paymentMap["amount"] as? Number)?.toDouble() ?: 0.0
         val paymentCurrency = (paymentMap["currency"] as? String) ?: "RON"
@@ -717,7 +720,7 @@ class FirebaseCampaignRepository(
         )
 
         // Get nested requirements
-        val requirementsMap = data["requirements"] as? Map<*, *> ?: emptyMap<String, Any>()
+        val requirementsMap = rawData?.get("requirements") as? Map<*, *> ?: emptyMap<String, Any>()
 
         val minDailyDistance = (requirementsMap["minDailyDistance"] as? Number)?.toInt() ?: 0
 
@@ -766,7 +769,7 @@ class FirebaseCampaignRepository(
 
         // Get applicants and approved applicants
         val applicantsList = mutableListOf<String>()
-        val applicantsRaw = data["applicants"]
+        val applicantsRaw = rawData?.get("applicants")
         if (applicantsRaw is List<*>) {
             for (appItem in applicantsRaw) {
                 if (appItem is String) {
@@ -776,7 +779,7 @@ class FirebaseCampaignRepository(
         }
 
         val approvedApplicantsList = mutableListOf<String>()
-        val approvedApplicantsRaw = data["approvedApplicants"]
+        val approvedApplicantsRaw = rawData?.get("approvedApplicants")
         if (approvedApplicantsRaw is List<*>) {
             for (appItem in approvedApplicantsRaw) {
                 if (appItem is String) {
@@ -807,22 +810,22 @@ class FirebaseCampaignRepository(
     /**
      * Parse an application document from Firestore
      */
-    private fun parseApplicationDocument(doc: dev.gitlive.firebase.firestore.DocumentSnapshot): CampaignApplication {
+    private fun parseApplicationDocument(doc: DocumentSnapshot): CampaignApplication {
         val applicationId = doc.id
-        val data = doc.data() ?: mapOf<String, Any>()
+        val rawData = doc.data()
 
-        val campaignId = data["campaignId"] as? String ?: ""
-        val carOwnerId = data["carOwnerId"] as? String ?: ""
-        val carId = data["carId"] as? String ?: ""
-        val statusString = data["status"] as? String ?: ApplicationStatus.PENDING.name
+        val campaignId = rawData?.get("campaignId") as? String ?: ""
+        val carOwnerId = rawData?.get("carOwnerId") as? String ?: ""
+        val carId = rawData?.get("carId") as? String ?: ""
+        val statusString = rawData?.get("status") as? String ?: ApplicationStatus.PENDING.name
         val status = try {
             ApplicationStatus.valueOf(statusString)
         } catch (e: Exception) {
             ApplicationStatus.PENDING
         }
-        val appliedAt = data["appliedAt"] as? Long ?: System.currentTimeMillis()
-        val updatedAt = data["updatedAt"] as? Long ?: System.currentTimeMillis()
-        val notes = data["notes"] as? String ?: ""
+        val appliedAt = rawData?.get("appliedAt") as? Long ?: System.currentTimeMillis()
+        val updatedAt = rawData?.get("updatedAt") as? Long ?: System.currentTimeMillis()
+        val notes = rawData?.get("notes") as? String ?: ""
 
         return CampaignApplication(
             id = applicationId,

@@ -1,3 +1,4 @@
+// File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/repository/FirebaseCampaignRepository.kt
 package istick.app.beta.repository
 
 import dev.gitlive.firebase.Firebase
@@ -196,10 +197,10 @@ class FirebaseCampaignRepository(
                 _userApplications.value = _userApplications.value + application
 
                 // Add applicant to campaign's applicants list
-                val campaignDoc = campaignsCollection.document(campaignId).get()
+                val campaignDoc = campaignsCollection.document(campaignId).get<Map<String, Any>?>()
 
                 // Process applicants list carefully to avoid type inference issues
-                val campaignData = campaignDoc.data()
+                val campaignData = campaignDoc?.data()
                 val currentApplicants = mutableListOf<String>()
 
                 if (campaignData != null) {
@@ -233,8 +234,8 @@ class FirebaseCampaignRepository(
         withContext(dispatcher) {
             try {
                 // Check if campaign exists
-                val campaignDoc = campaignsCollection.document(campaignId).get()
-                if (!campaignDoc.exists) {
+                val campaignDoc = campaignsCollection.document(campaignId).get<Map<String, Any>?>()
+                if (campaignDoc == null || !campaignDoc.exists) {
                     return@withContext Result.failure(Exception("Campaign not found"))
                 }
 
@@ -247,8 +248,8 @@ class FirebaseCampaignRepository(
                 )
 
                 // Get updated campaign
-                val updatedCampaignDoc = campaignsCollection.document(campaignId).get()
-                val updatedCampaign = parseCampaignDocument(updatedCampaignDoc)
+                val updatedCampaignDoc = campaignsCollection.document(campaignId).get<Map<String, Any>?>()
+                val updatedCampaign = parseCampaignDocument(updatedCampaignDoc!!)
 
                 // Update cache
                 campaignCache[campaignId] = updatedCampaign
@@ -489,8 +490,8 @@ class FirebaseCampaignRepository(
     ): Result<CampaignApplication> = withContext(dispatcher) {
         try {
             // Fetch application
-            val applicationDoc = applicationsCollection.document(applicationId).get()
-            if (!applicationDoc.exists) {
+            val applicationDoc = applicationsCollection.document(applicationId).get<Map<String, Any>?>()
+            if (applicationDoc == null || !applicationDoc.exists) {
                 return@withContext Result.failure(Exception("Application not found"))
             }
 
@@ -504,15 +505,16 @@ class FirebaseCampaignRepository(
 
             // If status is APPROVED, add to campaign's approved applicants
             if (status == ApplicationStatus.APPROVED) {
-                val campaignId = applicationDoc.data()?.get("campaignId") as? String ?: ""
-                val carOwnerId = applicationDoc.data()?.get("carOwnerId") as? String ?: ""
+                val applicationData = applicationDoc.data()
+                val campaignId = applicationData?.get("campaignId") as? String ?: ""
+                val carOwnerId = applicationData?.get("carOwnerId") as? String ?: ""
 
                 if (campaignId.isNotEmpty() && carOwnerId.isNotEmpty()) {
                     // Get current approved applicants
-                    val campaignDoc = campaignsCollection.document(campaignId).get()
+                    val campaignDoc = campaignsCollection.document(campaignId).get<Map<String, Any>?>()
 
                     // Extract and process approved applicants
-                    val campaignData = campaignDoc.data()
+                    val campaignData = campaignDoc?.data()
                     val currentApprovedApplicants = mutableListOf<String>()
 
                     if (campaignData != null) {
@@ -538,8 +540,8 @@ class FirebaseCampaignRepository(
             }
 
             // Parse updated application
-            val updatedApplicationDoc = applicationsCollection.document(applicationId).get()
-            val updatedApplication = parseApplicationDocument(updatedApplicationDoc)
+            val updatedApplicationDoc = applicationsCollection.document(applicationId).get<Map<String, Any>?>()
+            val updatedApplication = parseApplicationDocument(updatedApplicationDoc!!)
 
             // Update cache
             applicationCache[applicationId] = updatedApplication

@@ -2,18 +2,18 @@
 package istick.app.beta.repository
 
 import dev.gitlive.firebase.Firebase
+import dev.gitlive.firebase.firestore.Direction
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import dev.gitlive.firebase.firestore.firestore
-import dev.gitlive.firebase.firestore.where
 import istick.app.beta.auth.AuthRepository
 import istick.app.beta.model.*
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import kotlin.coroutines.cancellation.CancellationException
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.encodeToString
 
 /**
  * Firebase implementation of the user repository
@@ -25,14 +25,11 @@ class FirebaseUserRepository(
     // Firebase instances
     private val firestore: FirebaseFirestore = Firebase.firestore
     private val usersCollection = firestore.collection("users")
-    
-    // JSON serializer/deserializer for complex objects
-    private val json = Json { ignoreUnknownKeys = true }
-    
+
     // In-memory cache for current user
     private val _currentUser = MutableStateFlow<User?>(null)
     override val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
-    
+
     // In-memory cache for other users
     private val userCache = mutableMapOf<String, User>()
 
@@ -45,8 +42,8 @@ class FirebaseUserRepository(
      * Observe authentication state changes and update current user accordingly
      */
     private fun observeAuthState() {
-        authRepository.observeAuthState()
-            .onEach { isLoggedIn ->
+        GlobalScope.launch(dispatcher) {
+            authRepository.observeAuthState().collect { isLoggedIn ->
                 if (!isLoggedIn) {
                     // Clear current user when logged out
                     _currentUser.value = null
@@ -59,14 +56,14 @@ class FirebaseUserRepository(
                     }
                 }
             }
-            .launchIn(CoroutineScope(dispatcher))
+        }
     }
 
-    override suspend fun createUser(email: String, name: String, userType: UserType): Result<User> = 
+    override suspend fun createUser(email: String, name: String, userType: UserType): Result<User> =
         withContext(dispatcher) {
             try {
                 // Get current user ID from auth
-                val userId = authRepository.getCurrentUserId() 
+                val userId = authRepository.getCurrentUserId()
                     ?: return@withContext Result.failure(Exception("User not authenticated"))
 
                 // Create the user object based on type
@@ -120,7 +117,7 @@ class FirebaseUserRepository(
                 }
 
                 // Create the user document in Firestore
-                usersCollection.document(userId).set(userData)
+                usersCollection.document(userId).set(userData).await()
 
                 // Update cache
                 userCache[userId] = newUser
@@ -163,7 +160,7 @@ class FirebaseUserRepository(
             }
 
             // Update the user document in Firestore
-            usersCollection.document(user.id).update(updateData)
+            usersCollection.document(user.id).update(updateData).await()
 
             // Update cache
             userCache[user.id] = user
@@ -190,39 +187,39 @@ class FirebaseUserRepository(
             }
 
             // Fetch from Firestore if not in cache
-            val userDoc = usersCollection.document(userId).get()
+            val userDoc = usersCollection.document(userId).get().await()
             if (!userDoc.exists) {
                 return@withContext Result.success(null)
             }
 
             // Parse user type
-            val userType = userDoc.get("type", String::class)?.let {
-                try {
-                    UserType.valueOf(it)
-                } catch (e: Exception) {
-                    return@withContext Result.failure(Exception("Invalid user type: $it"))
-                }
-            } ?: return@withContext Result.failure(Exception("User type not found"))
+            val userTypeStr = userDoc.getString("type")
+            val userType = try {
+                if (userTypeStr != null) UserType.valueOf(userTypeStr)
+                else return@withContext Result.failure(Exception("User type not found"))
+            } catch (e: Exception) {
+                return@withContext Result.failure(Exception("Invalid user type: $userTypeStr"))
+            }
 
             // Create user object based on type
             val user = when (userType) {
                 UserType.CAR_OWNER -> {
                     val carOwner = CarOwner(
                         id = userId,
-                        email = userDoc.get("email", String::class) ?: "",
-                        name = userDoc.get("name", String::class) ?: "",
-                        profilePictureUrl = userDoc.get("profilePictureUrl", String::class),
-                        createdAt = userDoc.get("createdAt", Long::class) ?: System.currentTimeMillis(),
-                        lastLoginAt = userDoc.get("lastLoginAt", Long::class) ?: System.currentTimeMillis(),
-                        rating = userDoc.get("rating", Float::class) ?: 0f,
-                        reviewCount = userDoc.get("reviewCount", Int::class) ?: 0,
-                        city = userDoc.get("city", String::class) ?: "",
-                        dailyDrivingDistance = userDoc.get("dailyDrivingDistance", Int::class) ?: 0
+                        email = userDoc.getString("email") ?: "",
+                        name = userDoc.getString("name") ?: "",
+                        profilePictureUrl = userDoc.getString("profilePictureUrl"),
+                        createdAt = userDoc.getLong("createdAt") ?: System.currentTimeMillis(),
+                        lastLoginAt = userDoc.getLong("lastLoginAt") ?: System.currentTimeMillis(),
+                        rating = userDoc.getDouble("rating")?.toFloat() ?: 0f,
+                        reviewCount = userDoc.getLong("reviewCount")?.toInt() ?: 0,
+                        city = userDoc.getString("city") ?: "",
+                        dailyDrivingDistance = userDoc.getLong("dailyDrivingDistance")?.toInt() ?: 0
                     )
                     carOwner
                 }
                 UserType.BRAND -> {
-                    val companyDetailsMap = userDoc.get("companyDetails", Map::class) as? Map<String, Any> ?: emptyMap()
+                    val companyDetailsMap = userDoc.get("companyDetails") as? Map<String, Any> ?: emptyMap()
                     val companyDetails = CompanyDetails(
                         companyName = companyDetailsMap["companyName"] as? String ?: "",
                         industry = companyDetailsMap["industry"] as? String ?: "",
@@ -230,16 +227,16 @@ class FirebaseUserRepository(
                         description = companyDetailsMap["description"] as? String ?: "",
                         logoUrl = companyDetailsMap["logoUrl"] as? String ?: ""
                     )
-                    
+
                     Brand(
                         id = userId,
-                        email = userDoc.get("email", String::class) ?: "",
-                        name = userDoc.get("name", String::class) ?: "",
-                        profilePictureUrl = userDoc.get("profilePictureUrl", String::class),
-                        createdAt = userDoc.get("createdAt", Long::class) ?: System.currentTimeMillis(),
-                        lastLoginAt = userDoc.get("lastLoginAt", Long::class) ?: System.currentTimeMillis(),
-                        rating = userDoc.get("rating", Float::class) ?: 0f,
-                        reviewCount = userDoc.get("reviewCount", Int::class) ?: 0,
+                        email = userDoc.getString("email") ?: "",
+                        name = userDoc.getString("name") ?: "",
+                        profilePictureUrl = userDoc.getString("profilePictureUrl"),
+                        createdAt = userDoc.getLong("createdAt") ?: System.currentTimeMillis(),
+                        lastLoginAt = userDoc.getLong("lastLoginAt") ?: System.currentTimeMillis(),
+                        rating = userDoc.getDouble("rating")?.toFloat() ?: 0f,
+                        reviewCount = userDoc.getLong("reviewCount")?.toInt() ?: 0,
                         companyDetails = companyDetails
                     )
                 }
@@ -264,53 +261,46 @@ class FirebaseUserRepository(
         }
     }
 
-    override suspend fun updateUserProfilePicture(userId: String, imageUrl: String): Result<User> = 
+    override suspend fun updateUserProfilePicture(userId: String, imageUrl: String): Result<User> =
         withContext(dispatcher) {
             try {
                 // Get existing user
                 val existingUser = userCache[userId] ?: run {
-                    // If not in cache, fetch from Firestore
-                    val userDoc = usersCollection.document(userId).get()
-                    if (!userDoc.exists) {
-                        return@withContext Result.failure(Exception("User not found"))
-                    }
-                    
-                    // We'll just update the profile picture URL directly in Firestore
-                    // and return success without constructing the full user object
+                    // If not in cache, update the profile picture URL directly in Firestore
                     usersCollection.document(userId).update(
                         mapOf("profilePictureUrl" to imageUrl)
-                    )
-                    
-                    // Since we don't have the user in cache, we'll return null and rely on
-                    // the next call to getCurrentUser() to refresh the cache
-                    return@withContext Result.success(null) as Result<User>
+                    ).await()
+
+                    // Fetch the updated user (or null if it fails)
+                    val userResult = getUserById(userId)
+                    return@withContext userResult
                 }
-                
+
                 // Update profile picture for the existing user in cache
                 val updatedUser = when (existingUser) {
                     is CarOwner -> existingUser.copy(profilePictureUrl = imageUrl)
                     is Brand -> existingUser.copy(profilePictureUrl = imageUrl)
                     else -> return@withContext Result.failure(Exception("Unsupported user type"))
                 }
-                
+
                 // Update Firestore
                 usersCollection.document(userId).update(
                     mapOf("profilePictureUrl" to imageUrl)
-                )
-                
+                ).await()
+
                 // Update cache
                 userCache[userId] = updatedUser
                 if (_currentUser.value?.id == userId) {
                     _currentUser.value = updatedUser
                 }
-                
+
                 Result.success(updatedUser)
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 Result.failure(Exception("Failed to update profile picture: ${e.message}", e))
             }
         }
-    
+
     /**
      * Get user by ID - useful for fetching other users' profiles
      */
@@ -320,40 +310,40 @@ class FirebaseUserRepository(
             userCache[userId]?.let {
                 return@withContext Result.success(it)
             }
-            
+
             // Fetch from Firestore
-            val userDoc = usersCollection.document(userId).get()
+            val userDoc = usersCollection.document(userId).get().await()
             if (!userDoc.exists) {
                 return@withContext Result.failure(Exception("User not found"))
             }
-            
+
             // Parse user type
-            val userType = userDoc.get("type", String::class)?.let {
-                try {
-                    UserType.valueOf(it)
-                } catch (e: Exception) {
-                    return@withContext Result.failure(Exception("Invalid user type: $it"))
-                }
-            } ?: return@withContext Result.failure(Exception("User type not found"))
-            
+            val userTypeStr = userDoc.getString("type")
+            val userType = try {
+                if (userTypeStr != null) UserType.valueOf(userTypeStr)
+                else return@withContext Result.failure(Exception("User type not found"))
+            } catch (e: Exception) {
+                return@withContext Result.failure(Exception("Invalid user type: $userTypeStr"))
+            }
+
             // Create user object based on type
             val user = when (userType) {
                 UserType.CAR_OWNER -> {
                     CarOwner(
                         id = userId,
-                        email = userDoc.get("email", String::class) ?: "",
-                        name = userDoc.get("name", String::class) ?: "",
-                        profilePictureUrl = userDoc.get("profilePictureUrl", String::class),
-                        createdAt = userDoc.get("createdAt", Long::class) ?: System.currentTimeMillis(),
-                        lastLoginAt = userDoc.get("lastLoginAt", Long::class) ?: System.currentTimeMillis(),
-                        rating = userDoc.get("rating", Float::class) ?: 0f,
-                        reviewCount = userDoc.get("reviewCount", Int::class) ?: 0,
-                        city = userDoc.get("city", String::class) ?: "",
-                        dailyDrivingDistance = userDoc.get("dailyDrivingDistance", Int::class) ?: 0
+                        email = userDoc.getString("email") ?: "",
+                        name = userDoc.getString("name") ?: "",
+                        profilePictureUrl = userDoc.getString("profilePictureUrl"),
+                        createdAt = userDoc.getLong("createdAt") ?: System.currentTimeMillis(),
+                        lastLoginAt = userDoc.getLong("lastLoginAt") ?: System.currentTimeMillis(),
+                        rating = userDoc.getDouble("rating")?.toFloat() ?: 0f,
+                        reviewCount = userDoc.getLong("reviewCount")?.toInt() ?: 0,
+                        city = userDoc.getString("city") ?: "",
+                        dailyDrivingDistance = userDoc.getLong("dailyDrivingDistance")?.toInt() ?: 0
                     )
                 }
                 UserType.BRAND -> {
-                    val companyDetailsMap = userDoc.get("companyDetails", Map::class) as? Map<String, Any> ?: emptyMap()
+                    val companyDetailsMap = userDoc.get("companyDetails") as? Map<String, Any> ?: emptyMap()
                     val companyDetails = CompanyDetails(
                         companyName = companyDetailsMap["companyName"] as? String ?: "",
                         industry = companyDetailsMap["industry"] as? String ?: "",
@@ -361,76 +351,80 @@ class FirebaseUserRepository(
                         description = companyDetailsMap["description"] as? String ?: "",
                         logoUrl = companyDetailsMap["logoUrl"] as? String ?: ""
                     )
-                    
+
                     Brand(
                         id = userId,
-                        email = userDoc.get("email", String::class) ?: "",
-                        name = userDoc.get("name", String::class) ?: "",
-                        profilePictureUrl = userDoc.get("profilePictureUrl", String::class),
-                        createdAt = userDoc.get("createdAt", Long::class) ?: System.currentTimeMillis(),
-                        lastLoginAt = userDoc.get("lastLoginAt", Long::class) ?: System.currentTimeMillis(),
-                        rating = userDoc.get("rating", Float::class) ?: 0f,
-                        reviewCount = userDoc.get("reviewCount", Int::class) ?: 0,
+                        email = userDoc.getString("email") ?: "",
+                        name = userDoc.getString("name") ?: "",
+                        profilePictureUrl = userDoc.getString("profilePictureUrl"),
+                        createdAt = userDoc.getLong("createdAt") ?: System.currentTimeMillis(),
+                        lastLoginAt = userDoc.getLong("lastLoginAt") ?: System.currentTimeMillis(),
+                        rating = userDoc.getDouble("rating")?.toFloat() ?: 0f,
+                        reviewCount = userDoc.getLong("reviewCount")?.toInt() ?: 0,
                         companyDetails = companyDetails
                     )
                 }
             }
-            
+
             // Update cache
             userCache[userId] = user
-            
+
             Result.success(user)
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Result.failure(Exception("Failed to get user: ${e.message}", e))
         }
     }
-    
+
     /**
      * Search users by name
      */
-    suspend fun searchUsersByName(query: String, maxResults: Int = 20): Result<List<User>> = 
+    suspend fun searchUsersByName(query: String, maxResults: Int = 20): Result<List<User>> =
         withContext(dispatcher) {
             try {
                 if (query.length < 2) {
                     return@withContext Result.success(emptyList())
                 }
-                
+
                 val querySnapshot = usersCollection
-                    .where("name", ">=", query)
-                    .where("name", "<=", query + "\uf8ff")
+                    .whereGreaterThanOrEqualTo("name", query)
+                    .whereLessThanOrEqualTo("name", query + "\uf8ff")
                     .limit(maxResults.toLong())
                     .get()
-                
+                    .await()
+
                 val users = querySnapshot.documents.mapNotNull { doc ->
                     try {
                         val userId = doc.id
-                        val userType = doc.get("type", String::class)?.let {
-                            UserType.valueOf(it)
-                        } ?: return@mapNotNull null
-                        
+                        val userTypeStr = doc.getString("type")
+                        val userType = try {
+                            if (userTypeStr != null) UserType.valueOf(userTypeStr) else return@mapNotNull null
+                        } catch (e: Exception) {
+                            return@mapNotNull null
+                        }
+
                         val user = when (userType) {
                             UserType.CAR_OWNER -> {
                                 CarOwner(
                                     id = userId,
-                                    email = doc.get("email", String::class) ?: "",
-                                    name = doc.get("name", String::class) ?: "",
-                                    profilePictureUrl = doc.get("profilePictureUrl", String::class),
-                                    rating = doc.get("rating", Float::class) ?: 0f,
-                                    reviewCount = doc.get("reviewCount", Int::class) ?: 0,
-                                    city = doc.get("city", String::class) ?: ""
+                                    email = doc.getString("email") ?: "",
+                                    name = doc.getString("name") ?: "",
+                                    profilePictureUrl = doc.getString("profilePictureUrl"),
+                                    rating = doc.getDouble("rating")?.toFloat() ?: 0f,
+                                    reviewCount = doc.getLong("reviewCount")?.toInt() ?: 0,
+                                    city = doc.getString("city") ?: ""
                                 )
                             }
                             UserType.BRAND -> {
-                                val companyDetailsMap = doc.get("companyDetails", Map::class) as? Map<String, Any> ?: emptyMap()
-                                
+                                val companyDetailsMap = doc.get("companyDetails") as? Map<String, Any> ?: emptyMap()
+
                                 Brand(
                                     id = userId,
-                                    email = doc.get("email", String::class) ?: "",
-                                    name = doc.get("name", String::class) ?: "",
-                                    profilePictureUrl = doc.get("profilePictureUrl", String::class),
-                                    rating = doc.get("rating", Float::class) ?: 0f,
-                                    reviewCount = doc.get("reviewCount", Int::class) ?: 0,
+                                    email = doc.getString("email") ?: "",
+                                    name = doc.getString("name") ?: "",
+                                    profilePictureUrl = doc.getString("profilePictureUrl"),
+                                    rating = doc.getDouble("rating")?.toFloat() ?: 0f,
+                                    reviewCount = doc.getLong("reviewCount")?.toInt() ?: 0,
                                     companyDetails = CompanyDetails(
                                         companyName = companyDetailsMap["companyName"] as? String ?: "",
                                         industry = companyDetailsMap["industry"] as? String ?: ""
@@ -438,113 +432,23 @@ class FirebaseUserRepository(
                                 )
                             }
                         }
-                        
+
                         // Update cache
                         userCache[userId] = user
-                        
+
                         user
                     } catch (e: Exception) {
                         null
                     }
                 }
-                
+
                 Result.success(users)
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 Result.failure(Exception("Failed to search users: ${e.message}", e))
             }
         }
-        
-    /**
-     * Get top brands (by rating)
-     */
-    suspend fun getTopBrands(limit: Int = 10): Result<List<Brand>> = withContext(dispatcher) {
-        try {
-            val querySnapshot = usersCollection
-                .where("type", "==", UserType.BRAND.name)
-                .orderBy("rating", "desc")
-                .limit(limit.toLong())
-                .get()
-                
-            val brands = querySnapshot.documents.mapNotNull { doc ->
-                try {
-                    val userId = doc.id
-                    val companyDetailsMap = doc.get("companyDetails", Map::class) as? Map<String, Any> ?: emptyMap()
-                    
-                    val brand = Brand(
-                        id = userId,
-                        email = doc.get("email", String::class) ?: "",
-                        name = doc.get("name", String::class) ?: "",
-                        profilePictureUrl = doc.get("profilePictureUrl", String::class),
-                        rating = doc.get("rating", Float::class) ?: 0f,
-                        reviewCount = doc.get("reviewCount", Int::class) ?: 0,
-                        companyDetails = CompanyDetails(
-                            companyName = companyDetailsMap["companyName"] as? String ?: "",
-                            industry = companyDetailsMap["industry"] as? String ?: "",
-                            website = companyDetailsMap["website"] as? String ?: "",
-                            description = companyDetailsMap["description"] as? String ?: "",
-                            logoUrl = companyDetailsMap["logoUrl"] as? String ?: ""
-                        )
-                    )
-                    
-                    // Update cache
-                    userCache[userId] = brand
-                    
-                    brand
-                } catch (e: Exception) {
-                    null
-                }
-            }
-            
-            Result.success(brands)
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            Result.failure(Exception("Failed to get top brands: ${e.message}", e))
-        }
-    }
-    
-    /**
-     * Get top car owners (by rating)
-     */
-    suspend fun getTopCarOwners(limit: Int = 10): Result<List<CarOwner>> = withContext(dispatcher) {
-        try {
-            val querySnapshot = usersCollection
-                .where("type", "==", UserType.CAR_OWNER.name)
-                .orderBy("rating", "desc")
-                .limit(limit.toLong())
-                .get()
-                
-            val carOwners = querySnapshot.documents.mapNotNull { doc ->
-                try {
-                    val userId = doc.id
-                    
-                    val carOwner = CarOwner(
-                        id = userId,
-                        email = doc.get("email", String::class) ?: "",
-                        name = doc.get("name", String::class) ?: "",
-                        profilePictureUrl = doc.get("profilePictureUrl", String::class),
-                        rating = doc.get("rating", Float::class) ?: 0f,
-                        reviewCount = doc.get("reviewCount", Int::class) ?: 0,
-                        city = doc.get("city", String::class) ?: "",
-                        dailyDrivingDistance = doc.get("dailyDrivingDistance", Int::class) ?: 0
-                    )
-                    
-                    // Update cache
-                    userCache[userId] = carOwner
-                    
-                    carOwner
-                } catch (e: Exception) {
-                    null
-                }
-            }
-            
-            Result.success(carOwners)
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            Result.failure(Exception("Failed to get top car owners: ${e.message}", e))
-        }
-    }
-    
+
     /**
      * Clear cache
      */

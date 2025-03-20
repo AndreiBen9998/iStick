@@ -42,7 +42,7 @@ class EnhancedFirebaseAuthRepository(
     // Init block to set up state monitoring
     init {
         // Start monitoring auth state
-        CoroutineScope(dispatcher).launch {
+        GlobalScope.launch(dispatcher) {
             try {
                 auth.authStateChanged.collect { authResult ->
                     val user = auth.currentUser
@@ -50,12 +50,12 @@ class EnhancedFirebaseAuthRepository(
 
                     if (user != null) {
                         _authState.value = AuthState.AUTHENTICATED
-                        _isEmailVerified.value = user.isEmailVerified ?: false
+                        _isEmailVerified.value = user.isEmailVerified
 
                         // Refresh user data to ensure we have latest email verified status
                         try {
                             user.reload()
-                            _isEmailVerified.value = user.isEmailVerified ?: false
+                            _isEmailVerified.value = user.isEmailVerified
                         } catch (e: Exception) {
                             // Ignore refresh errors
                         }
@@ -71,6 +71,7 @@ class EnhancedFirebaseAuthRepository(
             }
         }
     }
+
 
     override suspend fun signUp(email: String, password: String): Result<String> =
         withContext(dispatcher) {

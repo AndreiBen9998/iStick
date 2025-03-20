@@ -289,29 +289,29 @@ class FirebaseCampaignRepository(
         val data = doc.data() ?: emptyMap<String, Any>()
 
         // Extract basic fields with safe type casting
-        val brandId = data["brandId"] as? String ?: ""
-        val title = data["title"] as? String ?: ""
-        val description = data["description"] as? String ?: ""
-        val statusStr = data["status"] as? String ?: CampaignStatus.DRAFT.name
+        val brandId = doc.getString("brandId") ?: ""
+        val title = doc.getString("title") ?: ""
+        val description = doc.getString("description") ?: ""
+        val statusStr = doc.getString("status") ?: CampaignStatus.DRAFT.name
         val status = try {
             CampaignStatus.valueOf(statusStr)
         } catch (e: Exception) {
             CampaignStatus.DRAFT
         }
 
-        val startDate = data["startDate"] as? Long
-        val endDate = data["endDate"] as? Long
-        val createdAt = data["createdAt"] as? Long ?: System.currentTimeMillis()
-        val updatedAt = data["updatedAt"] as? Long ?: System.currentTimeMillis()
+        val startDate = doc.getLong("startDate")
+        val endDate = doc.getLong("endDate")
+        val createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
+        val updatedAt = doc.getLong("updatedAt") ?: System.currentTimeMillis()
 
         // Parse applicants lists
-        val applicants = parseStringList(data["applicants"])
-        val approvedApplicants = parseStringList(data["approvedApplicants"])
+        val applicants = parseStringList(doc.get("applicants"))
+        val approvedApplicants = parseStringList(doc.get("approvedApplicants"))
 
         // Parse nested objects
-        val stickerDetails = parseStickerDetails(data["stickerDetails"])
-        val payment = parsePaymentDetails(data["payment"])
-        val requirements = parseCampaignRequirements(data["requirements"])
+        val stickerDetails = parseStickerDetails(doc.get("stickerDetails"))
+        val payment = parsePaymentDetails(doc.get("payment"))
+        val requirements = parseCampaignRequirements(doc.get("requirements"))
 
         return Campaign(
             id = campaignId,

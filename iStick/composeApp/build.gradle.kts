@@ -38,10 +38,10 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtime.compose)
 
             // Firebase KMP
-            implementation("dev.gitlive:firebase-common:2.0.0")
-            implementation("dev.gitlive:firebase-auth:2.0.0")
-            implementation("dev.gitlive:firebase-storage:2.0.0")
-            implementation("dev.gitlive:firebase-firestore:2.0.0")
+            implementation("dev.gitlive:firebase-common:1.8.1")
+            implementation("dev.gitlive:firebase-auth:1.8.1")
+            implementation("dev.gitlive:firebase-firestore:1.8.1")
+            implementation("dev.gitlive:firebase-storage:1.8.1")
 
             // Coroutines
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")

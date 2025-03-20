@@ -1,4 +1,3 @@
-// File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/repository/FirebaseCampaignRepository.kt
 package istick.app.beta.repository
 
 import dev.gitlive.firebase.Firebase
@@ -9,16 +8,14 @@ import istick.app.beta.auth.AuthRepository
 import istick.app.beta.model.*
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.cancellation.CancellationException
 
-/**
- * Firebase implementation of the campaign repository
- *
- * Note: Using in-memory filtering to avoid type inference issues with GitLive KMP
- */
 class FirebaseCampaignRepository(
     private val authRepository: AuthRepository? = null,
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default
@@ -29,10 +26,10 @@ class FirebaseCampaignRepository(
     private val applicationsCollection = firestore.collection("applications")
 
     // State management
-    private val _activeCampaigns = MutableStateFlow<List<Campaign>>(listOf())
+    private val _activeCampaigns = MutableStateFlow<List<Campaign>>(emptyList())
     override val activeCampaigns: StateFlow<List<Campaign>> = _activeCampaigns.asStateFlow()
 
-    private val _userApplications = MutableStateFlow<List<CampaignApplication>>(listOf())
+    private val _userApplications = MutableStateFlow<List<CampaignApplication>>(emptyList())
     override val userApplications: StateFlow<List<CampaignApplication>> = _userApplications.asStateFlow()
 
     // Cache for campaigns
@@ -48,44 +45,40 @@ class FirebaseCampaignRepository(
     override fun observeActiveCampaigns(): Flow<List<Campaign>> {
         // If we haven't loaded active campaigns yet, do it now
         if (!activeCampaignsLoaded) {
-            // Use a coroutine with the appropriate dispatcher
             kotlinx.coroutines.GlobalScope.launch(dispatcher) {
                 try {
                     fetchActiveCampaigns()
                 } catch (e: Exception) {
-                    // Log error but don't crash
                     println("Error fetching active campaigns: ${e.message}")
                 }
             }
         }
-
         return _activeCampaigns
     }
 
     override suspend fun fetchActiveCampaigns(): Result<List<Campaign>> = withContext(dispatcher) {
         try {
-            // WORKAROUND: Fetch all campaigns and filter in memory
+            // Fetch all campaigns
             val querySnapshot = campaignsCollection.get()
+            val allCampaigns = mutableListOf<Campaign>()
 
-            val campaigns = mutableListOf<Campaign>()
-
-            for (doc in querySnapshot.documents) {
+            // Process each document
+            for (document in querySnapshot.documents) {
                 try {
-                    val campaign = parseCampaignDocument(doc)
-                    // Only include active campaigns - filter in memory
+                    val campaign = parseCampaignDocument(document)
                     if (campaign.status == CampaignStatus.ACTIVE) {
-                        campaigns.add(campaign)
+                        allCampaigns.add(campaign)
                         campaignCache[campaign.id] = campaign
                     }
                 } catch (e: Exception) {
-                    println("Error parsing campaign: ${e.message}")
+                    println("Error parsing campaign document: ${e.message}")
                 }
             }
 
-            _activeCampaigns.value = campaigns
+            _activeCampaigns.value = allCampaigns
             activeCampaignsLoaded = true
 
-            Result.success(campaigns)
+            Result.success(allCampaigns)
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Result.failure(Exception("Failed to fetch active campaigns: ${e.message}", e))
@@ -121,28 +114,27 @@ class FirebaseCampaignRepository(
     override suspend fun fetchUserApplications(userId: String): Result<List<CampaignApplication>> =
         withContext(dispatcher) {
             try {
-                // WORKAROUND: Fetch all applications and filter in memory
+                // Fetch all applications
                 val querySnapshot = applicationsCollection.get()
+                val userApps = mutableListOf<CampaignApplication>()
 
-                val applications = mutableListOf<CampaignApplication>()
-
-                for (doc in querySnapshot.documents) {
+                // Process each document
+                for (document in querySnapshot.documents) {
                     try {
-                        val application = parseApplicationDocument(doc)
-                        // Filter for this user's applications
+                        val application = parseApplicationDocument(document)
                         if (application.carOwnerId == userId) {
-                            applications.add(application)
+                            userApps.add(application)
                             applicationCache[application.id] = application
                         }
                     } catch (e: Exception) {
-                        println("Error parsing application: ${e.message}")
+                        println("Error parsing application document: ${e.message}")
                     }
                 }
 
-                _userApplications.value = applications
+                _userApplications.value = userApps
                 userApplicationsLoaded = true
 
-                Result.success(applications)
+                Result.success(userApps)
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 Result.failure(Exception("Failed to fetch user applications: ${e.message}", e))
@@ -156,7 +148,7 @@ class FirebaseCampaignRepository(
                 val userId = authRepository?.getCurrentUserId()
                     ?: return@withContext Result.failure(Exception("User not authenticated"))
 
-                // WORKAROUND: Check if user already applied to this campaign (in-memory filtering)
+                // Check if user already applied
                 val existingApplications = _userApplications.value.any {
                     it.campaignId == campaignId &&
                             it.carOwnerId == userId &&
@@ -168,15 +160,14 @@ class FirebaseCampaignRepository(
                 }
 
                 // Prepare application data
-                val applicationData = mapOf(
-                    "campaignId" to campaignId,
-                    "carOwnerId" to userId,
-                    "carId" to carId,
-                    "status" to ApplicationStatus.PENDING.name,
-                    "appliedAt" to System.currentTimeMillis(),
-                    "updatedAt" to System.currentTimeMillis(),
-                    "notes" to ""
-                )
+                val applicationData = HashMap<String, Any>()
+                applicationData["campaignId"] = campaignId
+                applicationData["carOwnerId"] = userId
+                applicationData["carId"] = carId
+                applicationData["status"] = ApplicationStatus.PENDING.name
+                applicationData["appliedAt"] = System.currentTimeMillis()
+                applicationData["updatedAt"] = System.currentTimeMillis()
+                applicationData["notes"] = ""
 
                 // Add application to Firestore
                 val applicationRef = applicationsCollection.add(applicationData)
@@ -198,29 +189,7 @@ class FirebaseCampaignRepository(
                 _userApplications.value = _userApplications.value + application
 
                 // Add applicant to campaign's applicants list
-                val campaignDocRef = campaignsCollection.document(campaignId)
-                val campaignDoc = campaignDocRef.get()
-
-                // Process applicants list safely
-                val currentApplicants = mutableListOf<String>()
-                if (campaignDoc.exists) {
-                    val rawData = campaignDoc.data()
-                    val applicantsObj = rawData?.get("applicants")
-                    if (applicantsObj is List<*>) {
-                        for (item in applicantsObj) {
-                            if (item is String) {
-                                currentApplicants.add(item)
-                            }
-                        }
-                    }
-                }
-
-                // Add new applicant if not already present
-                if (!currentApplicants.contains(userId)) {
-                    val updatedApplicants = ArrayList<String>(currentApplicants)
-                    updatedApplicants.add(userId)
-                    campaignDocRef.update(mapOf("applicants" to updatedApplicants))
-                }
+                updateCampaignApplicants(campaignId, userId)
 
                 Result.success(application)
             } catch (e: Exception) {
@@ -233,43 +202,27 @@ class FirebaseCampaignRepository(
         withContext(dispatcher) {
             try {
                 // Check if campaign exists
-                val campaignDocRef = campaignsCollection.document(campaignId)
-                val campaignDoc = campaignDocRef.get()
-
+                val campaignDoc = campaignsCollection.document(campaignId).get()
                 if (!campaignDoc.exists) {
                     return@withContext Result.failure(Exception("Campaign not found"))
                 }
 
                 // Update status
-                campaignDocRef.update(
-                    mapOf(
-                        "status" to status.name,
-                        "updatedAt" to System.currentTimeMillis()
-                    )
-                )
+                val updates = HashMap<String, Any>()
+                updates["status"] = status.name
+                updates["updatedAt"] = System.currentTimeMillis()
+
+                campaignsCollection.document(campaignId).update(updates)
 
                 // Get updated campaign
-                val updatedCampaignDoc = campaignDocRef.get()
+                val updatedCampaignDoc = campaignsCollection.document(campaignId).get()
                 val updatedCampaign = parseCampaignDocument(updatedCampaignDoc)
 
                 // Update cache
                 campaignCache[campaignId] = updatedCampaign
 
-                // Update state if campaign is in active campaigns
-                if (_activeCampaigns.value.any { it.id == campaignId }) {
-                    if (status == CampaignStatus.ACTIVE) {
-                        // If still active, update in list
-                        _activeCampaigns.value = _activeCampaigns.value.map {
-                            if (it.id == campaignId) updatedCampaign else it
-                        }
-                    } else {
-                        // If no longer active, remove from list
-                        _activeCampaigns.value = _activeCampaigns.value.filter { it.id != campaignId }
-                    }
-                } else if (status == CampaignStatus.ACTIVE) {
-                    // If not in list but now active, add to list
-                    _activeCampaigns.value = _activeCampaigns.value + updatedCampaign
-                }
+                // Update active campaigns list if needed
+                updateActiveCampaignsList(updatedCampaign)
 
                 Result.success(updatedCampaign)
             } catch (e: Exception) {
@@ -278,517 +231,88 @@ class FirebaseCampaignRepository(
             }
         }
 
-    /**
-     * Create a new campaign
-     */
-    suspend fun createCampaign(campaign: Campaign): Result<Campaign> = withContext(dispatcher) {
+    // Helper function to update campaign applicants
+    private suspend fun updateCampaignApplicants(campaignId: String, userId: String) {
         try {
-            // Prepare campaign data
-            val campaignData = mapOf(
-                "brandId" to campaign.brandId,
-                "title" to campaign.title,
-                "description" to campaign.description,
-                "stickerDetails" to mapOf(
-                    "imageUrl" to campaign.stickerDetails.imageUrl,
-                    "width" to campaign.stickerDetails.width,
-                    "height" to campaign.stickerDetails.height,
-                    "positions" to campaign.stickerDetails.positions.map { it.name },
-                    "deliveryMethod" to campaign.stickerDetails.deliveryMethod.name
-                ),
-                "payment" to mapOf(
-                    "amount" to campaign.payment.amount,
-                    "currency" to campaign.payment.currency,
-                    "paymentFrequency" to campaign.payment.paymentFrequency.name,
-                    "paymentMethod" to campaign.payment.paymentMethod.name
-                ),
-                "requirements" to mapOf(
-                    "minDailyDistance" to campaign.requirements.minDailyDistance,
-                    "cities" to campaign.requirements.cities,
-                    "carMakes" to campaign.requirements.carMakes,
-                    "carModels" to campaign.requirements.carModels,
-                    "carYearMin" to campaign.requirements.carYearMin,
-                    "carYearMax" to campaign.requirements.carYearMax
-                ),
-                "status" to campaign.status.name,
-                "startDate" to campaign.startDate,
-                "endDate" to campaign.endDate,
-                "createdAt" to System.currentTimeMillis(),
-                "updatedAt" to System.currentTimeMillis(),
-                "applicants" to emptyList<String>(),
-                "approvedApplicants" to emptyList<String>()
-            )
+            val campaignDocRef = campaignsCollection.document(campaignId)
+            val campaignDoc = campaignDocRef.get()
 
-            // Add campaign to Firestore
-            val campaignRef = campaignsCollection.add(campaignData)
-            val campaignId = campaignRef.id
+            if (campaignDoc.exists) {
+                // Get current applicants
+                val applicantsField = campaignDoc.data()?.get("applicants")
+                val currentApplicants = mutableListOf<String>()
 
-            // Create campaign object with ID
-            val newCampaign = campaign.copy(id = campaignId)
+                if (applicantsField is List<*>) {
+                    for (item in applicantsField) {
+                        if (item is String) {
+                            currentApplicants.add(item)
+                        }
+                    }
+                }
 
-            // Update cache
-            campaignCache[newCampaign.id] = newCampaign
-
-            // Update state if campaign is active
-            if (newCampaign.status == CampaignStatus.ACTIVE) {
-                _activeCampaigns.value = _activeCampaigns.value + newCampaign
+                // Add new applicant if not already present
+                if (!currentApplicants.contains(userId)) {
+                    currentApplicants.add(userId)
+                    val updates = HashMap<String, Any>()
+                    updates["applicants"] = currentApplicants
+                    campaignDocRef.update(updates)
+                }
             }
-
-            Result.success(newCampaign)
         } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            Result.failure(Exception("Failed to create campaign: ${e.message}", e))
+            println("Error updating campaign applicants: ${e.message}")
         }
     }
 
-    /**
-     * Update an existing campaign
-     */
-    suspend fun updateCampaign(campaign: Campaign): Result<Campaign> = withContext(dispatcher) {
-        try {
-            // Prepare campaign data
-            val campaignData = mapOf(
-                "title" to campaign.title,
-                "description" to campaign.description,
-                "stickerDetails" to mapOf(
-                    "imageUrl" to campaign.stickerDetails.imageUrl,
-                    "width" to campaign.stickerDetails.width,
-                    "height" to campaign.stickerDetails.height,
-                    "positions" to campaign.stickerDetails.positions.map { it.name },
-                    "deliveryMethod" to campaign.stickerDetails.deliveryMethod.name
-                ),
-                "payment" to mapOf(
-                    "amount" to campaign.payment.amount,
-                    "currency" to campaign.payment.currency,
-                    "paymentFrequency" to campaign.payment.paymentFrequency.name,
-                    "paymentMethod" to campaign.payment.paymentMethod.name
-                ),
-                "requirements" to mapOf(
-                    "minDailyDistance" to campaign.requirements.minDailyDistance,
-                    "cities" to campaign.requirements.cities,
-                    "carMakes" to campaign.requirements.carMakes,
-                    "carModels" to campaign.requirements.carModels,
-                    "carYearMin" to campaign.requirements.carYearMin,
-                    "carYearMax" to campaign.requirements.carYearMax
-                ),
-                "status" to campaign.status.name,
-                "startDate" to campaign.startDate,
-                "endDate" to campaign.endDate,
-                "updatedAt" to System.currentTimeMillis()
-            )
+    // Helper function to update active campaigns list
+    private fun updateActiveCampaignsList(campaign: Campaign) {
+        val isInList = _activeCampaigns.value.any { it.id == campaign.id }
 
-            // Update campaign in Firestore
-            campaignsCollection.document(campaign.id).update(campaignData)
-
-            // Update cache
-            campaignCache[campaign.id] = campaign
-
-            // Update state if campaign is in active campaigns
-            if (_activeCampaigns.value.any { it.id == campaign.id }) {
-                if (campaign.status == CampaignStatus.ACTIVE) {
-                    // If still active, update in list
-                    _activeCampaigns.value = _activeCampaigns.value.map {
-                        if (it.id == campaign.id) campaign else it
-                    }
-                } else {
-                    // If no longer active, remove from list
-                    _activeCampaigns.value = _activeCampaigns.value.filter { it.id != campaign.id }
+        if (campaign.status == CampaignStatus.ACTIVE) {
+            if (isInList) {
+                // Update existing campaign in list
+                _activeCampaigns.value = _activeCampaigns.value.map {
+                    if (it.id == campaign.id) campaign else it
                 }
-            } else if (campaign.status == CampaignStatus.ACTIVE) {
-                // If not in list but now active, add to list
+            } else {
+                // Add to list if active
                 _activeCampaigns.value = _activeCampaigns.value + campaign
             }
-
-            Result.success(campaign)
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            Result.failure(Exception("Failed to update campaign: ${e.message}", e))
+        } else if (isInList) {
+            // Remove from list if not active
+            _activeCampaigns.value = _activeCampaigns.value.filter { it.id != campaign.id }
         }
     }
 
-    /**
-     * Get campaigns created by a brand
-     */
-    suspend fun getBrandCampaigns(brandId: String): Result<List<Campaign>> = withContext(dispatcher) {
-        try {
-            // WORKAROUND: Fetch all campaigns and filter in memory
-            val querySnapshot = campaignsCollection.get()
-
-            val campaigns = mutableListOf<Campaign>()
-
-            for (doc in querySnapshot.documents) {
-                try {
-                    val campaign = parseCampaignDocument(doc)
-                    // Only include campaigns for this brand
-                    if (campaign.brandId == brandId) {
-                        campaigns.add(campaign)
-                        campaignCache[campaign.id] = campaign
-                    }
-                } catch (e: Exception) {
-                    println("Error parsing campaign: ${e.message}")
-                }
-            }
-
-            Result.success(campaigns)
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            Result.failure(Exception("Failed to get brand campaigns: ${e.message}", e))
-        }
-    }
-
-    /**
-     * Get campaigns matching user preferences
-     */
-    suspend fun getMatchingCampaigns(
-        city: String,
-        dailyDistance: Int,
-        carMake: String,
-        carModel: String,
-        carYear: Int
-    ): Result<List<Campaign>> = withContext(dispatcher) {
-        try {
-            // WORKAROUND: Fetch active campaigns and filter in memory
-            val allCampaignsResult = fetchActiveCampaigns()
-            val allCampaigns = allCampaignsResult.getOrNull() ?: emptyList()
-
-            // Filter campaigns based on requirements
-            val matchingCampaigns = allCampaigns.filter { campaign ->
-                val req = campaign.requirements
-
-                // Check daily distance requirement
-                val meetsDistanceReq = dailyDistance >= req.minDailyDistance
-
-                // Check city requirement (empty cities list means all cities are accepted)
-                val meetsCityReq = req.cities.isEmpty() || req.cities.contains(city)
-
-                // Check car make requirement (empty list means all makes are accepted)
-                val meetsMakeReq = req.carMakes.isEmpty() || req.carMakes.contains(carMake)
-
-                // Check car model requirement (empty list means all models are accepted)
-                val meetsModelReq = req.carModels.isEmpty() || req.carModels.contains(carModel)
-
-                // Check car year requirement
-                val meetsYearMinReq = req.carYearMin == null || carYear >= req.carYearMin
-                val meetsYearMaxReq = req.carYearMax == null || carYear <= req.carYearMax
-
-                // Campaign matches if it meets all requirements
-                meetsDistanceReq && meetsCityReq && meetsMakeReq &&
-                        meetsModelReq && meetsYearMinReq && meetsYearMaxReq
-            }
-
-            Result.success(matchingCampaigns)
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            Result.failure(Exception("Failed to get matching campaigns: ${e.message}", e))
-        }
-    }
-
-    /**
-     * Update application status
-     */
-    suspend fun updateApplicationStatus(
-        applicationId: String,
-        status: ApplicationStatus
-    ): Result<CampaignApplication> = withContext(dispatcher) {
-        try {
-            // Fetch application
-            val applicationDocRef = applicationsCollection.document(applicationId)
-            val applicationDoc = applicationDocRef.get()
-
-            if (!applicationDoc.exists) {
-                return@withContext Result.failure(Exception("Application not found"))
-            }
-
-            // Update status
-            applicationDocRef.update(
-                mapOf(
-                    "status" to status.name,
-                    "updatedAt" to System.currentTimeMillis()
-                )
-            )
-
-            // If status is APPROVED, add to campaign's approved applicants
-            if (status == ApplicationStatus.APPROVED) {
-                val rawData = applicationDoc.data()
-                val campaignId = rawData?.get("campaignId") as? String ?: ""
-                val carOwnerId = rawData?.get("carOwnerId") as? String ?: ""
-
-                if (campaignId.isNotEmpty() && carOwnerId.isNotEmpty()) {
-                    // Get current approved applicants
-                    val campaignDocRef = campaignsCollection.document(campaignId)
-                    val campaignDoc = campaignDocRef.get()
-
-                    // Extract and process approved applicants
-                    val currentApprovedApplicants = mutableListOf<String>()
-                    if (campaignDoc.exists) {
-                        val campaignData = campaignDoc.data()
-                        val approvedApplicantsObj = campaignData?.get("approvedApplicants")
-                        if (approvedApplicantsObj is List<*>) {
-                            for (item in approvedApplicantsObj) {
-                                if (item is String) {
-                                    currentApprovedApplicants.add(item)
-                                }
-                            }
-                        }
-                    }
-
-                    // Add new approved applicant if not already present
-                    if (!currentApprovedApplicants.contains(carOwnerId)) {
-                        val updatedApprovedApplicants = ArrayList<String>(currentApprovedApplicants)
-                        updatedApprovedApplicants.add(carOwnerId)
-                        campaignDocRef.update(
-                            mapOf("approvedApplicants" to updatedApprovedApplicants)
-                        )
-                    }
-                }
-            }
-
-            // Parse updated application
-            val updatedApplicationDoc = applicationDocRef.get()
-            val updatedApplication = parseApplicationDocument(updatedApplicationDoc)
-
-            // Update cache
-            applicationCache[applicationId] = updatedApplication
-
-            // Update state if application is in user applications
-            if (_userApplications.value.any { it.id == applicationId }) {
-                _userApplications.value = _userApplications.value.map {
-                    if (it.id == applicationId) updatedApplication else it
-                }
-            }
-
-            Result.success(updatedApplication)
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            Result.failure(Exception("Failed to update application status: ${e.message}", e))
-        }
-    }
-
-    /**
-     * Get applications for a campaign
-     */
-    suspend fun getCampaignApplications(campaignId: String): Result<List<CampaignApplication>> =
-        withContext(dispatcher) {
-            try {
-                // WORKAROUND: Fetch all applications and filter in memory
-                val querySnapshot = applicationsCollection.get()
-
-                val applications = mutableListOf<CampaignApplication>()
-
-                for (doc in querySnapshot.documents) {
-                    try {
-                        val application = parseApplicationDocument(doc)
-                        // Only include applications for this campaign
-                        if (application.campaignId == campaignId) {
-                            applications.add(application)
-                            applicationCache[application.id] = application
-                        }
-                    } catch (e: Exception) {
-                        println("Error parsing application: ${e.message}")
-                    }
-                }
-
-                Result.success(applications)
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                Result.failure(Exception("Failed to get campaign applications: ${e.message}", e))
-            }
-        }
-
-    /**
-     * Get recent campaigns
-     */
-    suspend fun getRecentCampaigns(limit: Int = 10): Result<List<Campaign>> = withContext(dispatcher) {
-        try {
-            // WORKAROUND: Fetch active campaigns and apply limit in memory
-            val activeResult = fetchActiveCampaigns()
-            val activeCampaigns = activeResult.getOrNull() ?: emptyList()
-
-            // Sort by creation date and take the most recent
-            val recentCampaigns = activeCampaigns
-                .sortedByDescending { it.createdAt }
-                .take(limit)
-
-            Result.success(recentCampaigns)
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            Result.failure(Exception("Failed to get recent campaigns: ${e.message}", e))
-        }
-    }
-
-    /**
-     * Clear cache and reset state
-     */
-    fun clearCache() {
-        campaignCache.clear()
-        applicationCache.clear()
-        _activeCampaigns.value = listOf()
-        _userApplications.value = listOf()
-        activeCampaignsLoaded = false
-        userApplicationsLoaded = false
-    }
-
-    /**
-     * Parse a campaign document from Firestore
-     * This method carefully extracts and converts the Firestore data to the Campaign model
-     */
+    // Parse a campaign document
     private fun parseCampaignDocument(doc: DocumentSnapshot): Campaign {
-        // Get basic fields
         val campaignId = doc.id
-        val rawData = doc.data()
+        val data = doc.data() ?: emptyMap<String, Any>()
 
-        // Use safe getters with proper type casting
-        val brandId = rawData?.get("brandId") as? String ?: ""
-        val title = rawData?.get("title") as? String ?: ""
-        val description = rawData?.get("description") as? String ?: ""
-        val statusString = rawData?.get("status") as? String ?: CampaignStatus.DRAFT.name
+        // Extract basic fields with safe type casting
+        val brandId = data["brandId"] as? String ?: ""
+        val title = data["title"] as? String ?: ""
+        val description = data["description"] as? String ?: ""
+        val statusStr = data["status"] as? String ?: CampaignStatus.DRAFT.name
         val status = try {
-            CampaignStatus.valueOf(statusString)
+            CampaignStatus.valueOf(statusStr)
         } catch (e: Exception) {
             CampaignStatus.DRAFT
         }
-        val startDate = rawData?.get("startDate") as? Long
-        val endDate = rawData?.get("endDate") as? Long
-        val createdAt = rawData?.get("createdAt") as? Long ?: System.currentTimeMillis()
-        val updatedAt = rawData?.get("updatedAt") as? Long ?: System.currentTimeMillis()
 
-        // Get nested sticker details
-        val stickerDetailsMap = rawData?.get("stickerDetails") as? Map<*, *> ?: emptyMap<String, Any>()
+        val startDate = data["startDate"] as? Long
+        val endDate = data["endDate"] as? Long
+        val createdAt = data["createdAt"] as? Long ?: System.currentTimeMillis()
+        val updatedAt = data["updatedAt"] as? Long ?: System.currentTimeMillis()
 
-        val stickerImageUrl = stickerDetailsMap["imageUrl"] as? String ?: ""
-        val stickerWidth = (stickerDetailsMap["width"] as? Number)?.toInt() ?: 0
-        val stickerHeight = (stickerDetailsMap["height"] as? Number)?.toInt() ?: 0
+        // Parse applicants lists
+        val applicants = parseStringList(data["applicants"])
+        val approvedApplicants = parseStringList(data["approvedApplicants"])
 
-        // Parse positions enum list
-        val positionList = mutableListOf<StickerPosition>()
-        val positionsRaw = stickerDetailsMap["positions"]
-        if (positionsRaw is List<*>) {
-            for (posItem in positionsRaw) {
-                if (posItem is String) {
-                    try {
-                        val position = StickerPosition.valueOf(posItem)
-                        positionList.add(position)
-                    } catch (e: Exception) {
-                        // Ignore invalid positions
-                    }
-                }
-            }
-        }
+        // Parse nested objects
+        val stickerDetails = parseStickerDetails(data["stickerDetails"])
+        val payment = parsePaymentDetails(data["payment"])
+        val requirements = parseCampaignRequirements(data["requirements"])
 
-        // Parse delivery method enum
-        val deliveryMethodString = (stickerDetailsMap["deliveryMethod"] as? String) ?: DeliveryMethod.CENTER.name
-        val deliveryMethod = try {
-            DeliveryMethod.valueOf(deliveryMethodString)
-        } catch (e: Exception) {
-            DeliveryMethod.CENTER
-        }
-
-        val stickerDetails = StickerDetails(
-            imageUrl = stickerImageUrl,
-            width = stickerWidth,
-            height = stickerHeight,
-            positions = positionList,
-            deliveryMethod = deliveryMethod
-        )
-
-        // Get nested payment details
-        val paymentMap = rawData?.get("payment") as? Map<*, *> ?: emptyMap<String, Any>()
-
-        val paymentAmount = (paymentMap["amount"] as? Number)?.toDouble() ?: 0.0
-        val paymentCurrency = (paymentMap["currency"] as? String) ?: "RON"
-
-        // Parse payment frequency enum
-        val paymentFrequencyString = (paymentMap["paymentFrequency"] as? String) ?: PaymentFrequency.MONTHLY.name
-        val paymentFrequency = try {
-            PaymentFrequency.valueOf(paymentFrequencyString)
-        } catch (e: Exception) {
-            PaymentFrequency.MONTHLY
-        }
-
-        // Parse payment method enum
-        val paymentMethodString = (paymentMap["paymentMethod"] as? String) ?: PaymentMethod.BANK_TRANSFER.name
-        val paymentMethod = try {
-            PaymentMethod.valueOf(paymentMethodString)
-        } catch (e: Exception) {
-            PaymentMethod.BANK_TRANSFER
-        }
-
-        val payment = PaymentDetails(
-            amount = paymentAmount,
-            currency = paymentCurrency,
-            paymentFrequency = paymentFrequency,
-            paymentMethod = paymentMethod
-        )
-
-        // Get nested requirements
-        val requirementsMap = rawData?.get("requirements") as? Map<*, *> ?: emptyMap<String, Any>()
-
-        val minDailyDistance = (requirementsMap["minDailyDistance"] as? Number)?.toInt() ?: 0
-
-        // Parse string lists carefully
-        val citiesList = mutableListOf<String>()
-        val citiesRaw = requirementsMap["cities"]
-        if (citiesRaw is List<*>) {
-            for (cityItem in citiesRaw) {
-                if (cityItem is String) {
-                    citiesList.add(cityItem)
-                }
-            }
-        }
-
-        val carMakesList = mutableListOf<String>()
-        val carMakesRaw = requirementsMap["carMakes"]
-        if (carMakesRaw is List<*>) {
-            for (makeItem in carMakesRaw) {
-                if (makeItem is String) {
-                    carMakesList.add(makeItem)
-                }
-            }
-        }
-
-        val carModelsList = mutableListOf<String>()
-        val carModelsRaw = requirementsMap["carModels"]
-        if (carModelsRaw is List<*>) {
-            for (modelItem in carModelsRaw) {
-                if (modelItem is String) {
-                    carModelsList.add(modelItem)
-                }
-            }
-        }
-
-        val carYearMin = (requirementsMap["carYearMin"] as? Number)?.toInt()
-        val carYearMax = (requirementsMap["carYearMax"] as? Number)?.toInt()
-
-        val requirements = CampaignRequirements(
-            minDailyDistance = minDailyDistance,
-            cities = citiesList,
-            carMakes = carMakesList,
-            carModels = carModelsList,
-            carYearMin = carYearMin,
-            carYearMax = carYearMax
-        )
-
-        // Get applicants and approved applicants
-        val applicantsList = mutableListOf<String>()
-        val applicantsRaw = rawData?.get("applicants")
-        if (applicantsRaw is List<*>) {
-            for (appItem in applicantsRaw) {
-                if (appItem is String) {
-                    applicantsList.add(appItem)
-                }
-            }
-        }
-
-        val approvedApplicantsList = mutableListOf<String>()
-        val approvedApplicantsRaw = rawData?.get("approvedApplicants")
-        if (approvedApplicantsRaw is List<*>) {
-            for (appItem in approvedApplicantsRaw) {
-                if (appItem is String) {
-                    approvedApplicantsList.add(appItem)
-                }
-            }
-        }
-
-        // Create Campaign object
         return Campaign(
             id = campaignId,
             brandId = brandId,
@@ -802,30 +326,30 @@ class FirebaseCampaignRepository(
             endDate = endDate,
             createdAt = createdAt,
             updatedAt = updatedAt,
-            applicants = applicantsList,
-            approvedApplicants = approvedApplicantsList
+            applicants = applicants,
+            approvedApplicants = approvedApplicants
         )
     }
 
-    /**
-     * Parse an application document from Firestore
-     */
+    // Parse an application document
     private fun parseApplicationDocument(doc: DocumentSnapshot): CampaignApplication {
         val applicationId = doc.id
-        val rawData = doc.data()
+        val data = doc.data() ?: emptyMap<String, Any>()
 
-        val campaignId = rawData?.get("campaignId") as? String ?: ""
-        val carOwnerId = rawData?.get("carOwnerId") as? String ?: ""
-        val carId = rawData?.get("carId") as? String ?: ""
-        val statusString = rawData?.get("status") as? String ?: ApplicationStatus.PENDING.name
+        val campaignId = data["campaignId"] as? String ?: ""
+        val carOwnerId = data["carOwnerId"] as? String ?: ""
+        val carId = data["carId"] as? String ?: ""
+
+        val statusStr = data["status"] as? String ?: ApplicationStatus.PENDING.name
         val status = try {
-            ApplicationStatus.valueOf(statusString)
+            ApplicationStatus.valueOf(statusStr)
         } catch (e: Exception) {
             ApplicationStatus.PENDING
         }
-        val appliedAt = rawData?.get("appliedAt") as? Long ?: System.currentTimeMillis()
-        val updatedAt = rawData?.get("updatedAt") as? Long ?: System.currentTimeMillis()
-        val notes = rawData?.get("notes") as? String ?: ""
+
+        val appliedAt = data["appliedAt"] as? Long ?: System.currentTimeMillis()
+        val updatedAt = data["updatedAt"] as? Long ?: System.currentTimeMillis()
+        val notes = data["notes"] as? String ?: ""
 
         return CampaignApplication(
             id = applicationId,
@@ -838,4 +362,182 @@ class FirebaseCampaignRepository(
             notes = notes
         )
     }
+
+    // Helper functions for parsing nested objects
+    private fun parseStickerDetails(value: Any?): StickerDetails {
+        if (value !is Map<*, *>) return StickerDetails()
+
+        val imageUrl = value["imageUrl"] as? String ?: ""
+        val width = (value["width"] as? Number)?.toInt() ?: 0
+        val height = (value["height"] as? Number)?.toInt() ?: 0
+
+        // Parse positions enum values
+        val positions = mutableListOf<StickerPosition>()
+        val positionsRaw = value["positions"]
+        if (positionsRaw is List<*>) {
+            for (pos in positionsRaw) {
+                if (pos is String) {
+                    try {
+                        positions.add(StickerPosition.valueOf(pos))
+                    } catch (e: Exception) {
+                        // Skip invalid positions
+                    }
+                }
+            }
+        }
+
+        // Parse delivery method enum
+        val deliveryMethodStr = value["deliveryMethod"] as? String ?: DeliveryMethod.CENTER.name
+        val deliveryMethod = try {
+            DeliveryMethod.valueOf(deliveryMethodStr)
+        } catch (e: Exception) {
+            DeliveryMethod.CENTER
+        }
+
+        return StickerDetails(
+            imageUrl = imageUrl,
+            width = width,
+            height = height,
+            positions = positions,
+            deliveryMethod = deliveryMethod
+        )
+    }
+
+    private fun parsePaymentDetails(value: Any?): PaymentDetails {
+        if (value !is Map<*, *>) return PaymentDetails()
+
+        val amount = (value["amount"] as? Number)?.toDouble() ?: 0.0
+        val currency = value["currency"] as? String ?: "RON"
+
+        // Parse payment frequency enum
+        val frequencyStr = value["paymentFrequency"] as? String ?: PaymentFrequency.MONTHLY.name
+        val frequency = try {
+            PaymentFrequency.valueOf(frequencyStr)
+        } catch (e: Exception) {
+            PaymentFrequency.MONTHLY
+        }
+
+        // Parse payment method enum
+        val methodStr = value["paymentMethod"] as? String ?: PaymentMethod.BANK_TRANSFER.name
+        val method = try {
+            PaymentMethod.valueOf(methodStr)
+        } catch (e: Exception) {
+            PaymentMethod.BANK_TRANSFER
+        }
+
+        return PaymentDetails(
+            amount = amount,
+            currency = currency,
+            paymentFrequency = frequency,
+            paymentMethod = method
+        )
+    }
+
+    private fun parseCampaignRequirements(value: Any?): CampaignRequirements {
+        if (value !is Map<*, *>) return CampaignRequirements()
+
+        val minDailyDistance = (value["minDailyDistance"] as? Number)?.toInt() ?: 0
+        val cities = parseStringList(value["cities"])
+        val carMakes = parseStringList(value["carMakes"])
+        val carModels = parseStringList(value["carModels"])
+        val carYearMin = (value["carYearMin"] as? Number)?.toInt()
+        val carYearMax = (value["carYearMax"] as? Number)?.toInt()
+
+        return CampaignRequirements(
+            minDailyDistance = minDailyDistance,
+            cities = cities,
+            carMakes = carMakes,
+            carModels = carModels,
+            carYearMin = carYearMin,
+            carYearMax = carYearMax
+        )
+    }
+
+    // Helper function to parse string lists
+    private fun parseStringList(value: Any?): List<String> {
+        val result = mutableListOf<String>()
+
+        if (value is List<*>) {
+            for (item in value) {
+                if (item is String) {
+                    result.add(item)
+                }
+            }
+        }
+
+        return result
+    }
+
+    // Additional methods that might be needed
+
+    /**
+     * Create a new campaign
+     */
+    suspend fun createCampaign(campaign: Campaign): Result<Campaign> = withContext(dispatcher) {
+        try {
+            // Prepare campaign data map
+            val campaignData = HashMap<String, Any>()
+            campaignData["brandId"] = campaign.brandId
+            campaignData["title"] = campaign.title
+            campaignData["description"] = campaign.description
+            campaignData["status"] = campaign.status.name
+
+            // Add dates
+            campaign.startDate?.let { campaignData["startDate"] = it }
+            campaign.endDate?.let { campaignData["endDate"] = it }
+
+            campaignData["createdAt"] = System.currentTimeMillis()
+            campaignData["updatedAt"] = System.currentTimeMillis()
+
+            // Add nested objects
+            campaignData["stickerDetails"] = mapOf(
+                "imageUrl" to campaign.stickerDetails.imageUrl,
+                "width" to campaign.stickerDetails.width,
+                "height" to campaign.stickerDetails.height,
+                "positions" to campaign.stickerDetails.positions.map { it.name },
+                "deliveryMethod" to campaign.stickerDetails.deliveryMethod.name
+            )
+
+            campaignData["payment"] = mapOf(
+                "amount" to campaign.payment.amount,
+                "currency" to campaign.payment.currency,
+                "paymentFrequency" to campaign.payment.paymentFrequency.name,
+                "paymentMethod" to campaign.payment.paymentMethod.name
+            )
+
+            campaignData["requirements"] = mapOf(
+                "minDailyDistance" to campaign.requirements.minDailyDistance,
+                "cities" to campaign.requirements.cities,
+                "carMakes" to campaign.requirements.carMakes,
+                "carModels" to campaign.requirements.carModels,
+                "carYearMin" to campaign.requirements.carYearMin,
+                "carYearMax" to campaign.requirements.carYearMax
+            )
+
+            campaignData["applicants"] = emptyList<String>()
+            campaignData["approvedApplicants"] = emptyList<String>()
+
+            // Add to Firestore
+            val campaignRef = campaignsCollection.add(campaignData)
+            val campaignId = campaignRef.id
+
+            // Create new campaign with ID
+            val newCampaign = campaign.copy(id = campaignId)
+
+            // Update cache
+            campaignCache[campaignId] = newCampaign
+
+            // Update active campaigns list if needed
+            if (newCampaign.status == CampaignStatus.ACTIVE) {
+                _activeCampaigns.value = _activeCampaigns.value + newCampaign
+            }
+
+            Result.success(newCampaign)
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Result.failure(Exception("Failed to create campaign: ${e.message}", e))
+        }
+    }
+
+    // Add any other methods you need here
 }

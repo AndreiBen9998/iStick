@@ -28,6 +28,9 @@ class EnhancedFirebaseAuthRepository(
     // Firebase Auth instance
     private val auth: FirebaseAuth = Firebase.auth
 
+    // Create a proper CoroutineScope instead of using GlobalScope
+    private val coroutineScope = CoroutineScope(dispatcher)
+
     // Auth state
     private val _authState = MutableStateFlow(AuthState.UNKNOWN)
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
@@ -42,7 +45,7 @@ class EnhancedFirebaseAuthRepository(
     // Init block to set up state monitoring
     init {
         // Start monitoring auth state
-        GlobalScope.launch(dispatcher) {
+        coroutineScope.launch {
             try {
                 auth.authStateChanged.collect { authResult ->
                     val user = auth.currentUser

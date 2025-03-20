@@ -10,6 +10,16 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+// Add repositories block here
+repositories {
+    mavenCentral()
+    google()
+    // Add the specific repository for GitLive Firebase KMP
+    maven { url = uri("https://maven.pkg.github.com/GitLiveApp/firebase-kotlin-sdk") }
+    // Alternatively, you can try JitPack as a fallback
+    maven { url = uri("https://jitpack.io") }
+}
+
 kotlin {
     androidTarget {
         compilations.configureEach {
@@ -37,11 +47,11 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.runtime.compose)
 
-            // Firebase KMP
-            implementation("dev.gitlive:firebase-common:1.8.1")
-            implementation("dev.gitlive:firebase-auth:1.8.1")
-            implementation("dev.gitlive:firebase-firestore:1.8.1")
-            implementation("dev.gitlive:firebase-storage:1.8.1")
+            // Firebase KMP - Updated to a newer version
+            implementation("dev.gitlive:firebase-common:1.10.0")
+            implementation("dev.gitlive:firebase-auth:1.10.0")
+            implementation("dev.gitlive:firebase-firestore:1.10.0")
+            implementation("dev.gitlive:firebase-storage:1.10.0")
 
             // Coroutines
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
@@ -111,6 +121,7 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.8.0")
     implementation("com.google.mlkit:text-recognition:16.0.0")
 }
+
 configurations.all {
     resolutionStrategy {
         force("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")

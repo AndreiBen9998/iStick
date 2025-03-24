@@ -1,3 +1,5 @@
+// File: iStick/composeApp/build.gradle.kts
+
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinAndroidTarget
 
@@ -5,18 +7,25 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
-    kotlin("plugin.serialization") version "1.9.22"  // Make sure this matches your Kotlin version
+    kotlin("plugin.serialization") version "1.9.22"
     id("com.google.devtools.ksp")
     id("com.google.gms.google-services")
 }
 
-// Add repositories block here
 repositories {
     mavenCentral()
     google()
-    // Add the specific repository for GitLive Firebase KMP
-    maven { url = uri("https://maven.pkg.github.com/GitLiveApp/firebase-kotlin-sdk") }
-    // Alternatively, you can try JitPack as a fallback
+    // GitHub Packages for GitLive Firebase KMP
+    maven {
+        url = uri("https://maven.pkg.github.com/GitLiveApp/firebase-kotlin-sdk")
+        credentials {
+            // Replace with your GitHub credentials or environment variables
+            // For CI/CD environments only - DO NOT include real credentials in your code
+            username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_USERNAME")
+            password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
+        }
+    }
+    // JitPack as fallback
     maven { url = uri("https://jitpack.io") }
 }
 
@@ -47,11 +56,11 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.runtime.compose)
 
-            // Firebase KMP - Updated to a newer version
-            implementation("dev.gitlive:firebase-common:1.10.0")
-            implementation("dev.gitlive:firebase-auth:1.10.0")
-            implementation("dev.gitlive:firebase-firestore:1.10.0")
-            implementation("dev.gitlive:firebase-storage:1.10.0")
+            // Firebase KMP - Updated to a newer, more stable version
+            implementation("dev.gitlive:firebase-common:1.11.0")
+            implementation("dev.gitlive:firebase-auth:1.11.0")
+            implementation("dev.gitlive:firebase-firestore:1.11.0")
+            implementation("dev.gitlive:firebase-storage:1.11.0")
 
             // Coroutines
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")

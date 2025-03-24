@@ -15,7 +15,8 @@ import kotlin.math.min
 /**
  * Platform-specific implementation for compressing images
  */
-expect fun FirebaseStorageRepository.compressPlatformImage(imageBytes: ByteArray, quality: Int): ByteArray
+expect fun compressImage(imageBytes: ByteArray, quality: Int): ByteArray
+
 /**
  * Firebase Storage implementation for handling file storage
  */
@@ -41,7 +42,7 @@ class FirebaseStorageRepository(
             try {
                 // Compress the image if it's too large (>1MB)
                 val compressedBytes = if (imageBytes.size > 1024 * 1024) {
-                    compressPlatformImage(imageBytes, 85)
+                    compressImage(imageBytes, 85)
                 } else {
                     imageBytes
                 }
@@ -50,13 +51,13 @@ class FirebaseStorageRepository(
                 val fileRef = storageRef.child(fileName)
 
                 // Upload the file
-                val uploadTask = fileRef.putBytes(compressedBytes)
-                uploadTask.await()
+                val task = fileRef.putBytes(compressedBytes)
+                task.await()
 
                 // Get the download URL
-                val downloadUrl = fileRef.downloadUrl.await()
+                val downloadUrl = fileRef.getDownloadUrl().await().toString()
 
-                Result.success(downloadUrl.toString())
+                Result.success(downloadUrl)
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 Result.failure(Exception("Failed to upload image: ${e.message}", e))
@@ -71,8 +72,8 @@ class FirebaseStorageRepository(
     override suspend fun getImageUrl(path: String): Result<String> = withContext(dispatcher) {
         try {
             val fileRef = storageRef.child(path)
-            val downloadUrl = fileRef.downloadUrl.await()
-            Result.success(downloadUrl.toString())
+            val downloadUrl = fileRef.getDownloadUrl().await().toString()
+            Result.success(downloadUrl)
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Result.failure(Exception("Failed to get image URL: ${e.message}", e))
@@ -90,11 +91,15 @@ class FirebaseStorageRepository(
             val userImagesRef = storageRef.child("users/$userId")
 
             // List all items in the folder
-            val listResult = userImagesRef.list(100).await()
+            val listResult = userImagesRef.list(100)
 
             // Get download URLs for all items
-            val urls = listResult.items.map { item ->
-                item.downloadUrl.await().toString()
+            val urls = listResult.items.mapNotNull { item ->
+                try {
+                    item.getDownloadUrl().await().toString()
+                } catch (e: Exception) {
+                    null
+                }
             }
 
             Result.success(urls)
@@ -119,9 +124,4 @@ class FirebaseStorageRepository(
             Result.failure(Exception("Failed to delete image: ${e.message}", e))
         }
     }
-
-    /**
-     * Platform-specific image compression (to be implemented in platform-specific code)
-     */
-    expect fun compressPlatformImage(imageBytes: ByteArray, quality: Int): ByteArray
 }

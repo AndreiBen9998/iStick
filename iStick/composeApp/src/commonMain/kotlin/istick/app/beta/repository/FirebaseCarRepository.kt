@@ -48,7 +48,7 @@ class FirebaseCarRepository(
                     val verificationsSnapshot = carsCollection
                         .document(carId)
                         .collection("verifications")
-                        .orderBy("timestamp", Direction.DESCENDING)
+                        .orderBy("timestamp")
                         .get()
                         .await()
 
@@ -215,7 +215,7 @@ class FirebaseCarRepository(
                 // Get existing car
                 val existingCar = carCache[carId] ?: run {
                     // Fetch car if not in cache
-                    val carDoc = carsCollection.document(carId).get().await()
+                    val carDoc = carsCollection.document(carId).get()
                     if (!carDoc.exists) {
                         return@withContext Result.failure(Exception("Car not found"))
                     }
@@ -279,7 +279,7 @@ class FirebaseCarRepository(
             }
 
             // Fetch car from Firestore
-            val carDoc = carsCollection.document(carId).get().await()
+            val carDoc = carsCollection.document(carId).get()
             if (!carDoc.exists) {
                 return@withContext Result.failure(Exception("Car not found"))
             }
@@ -288,7 +288,7 @@ class FirebaseCarRepository(
             val verificationsSnapshot = carsCollection
                 .document(carId)
                 .collection("verifications")
-                .orderBy("timestamp", Direction.DESCENDING)
+                .orderBy("timestamp")
                 .get()
                 .await()
 

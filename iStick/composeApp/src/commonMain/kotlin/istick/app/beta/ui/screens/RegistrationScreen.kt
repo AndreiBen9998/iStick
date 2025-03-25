@@ -31,9 +31,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import istick.app.beta.auth.FirebaseAuthRepository
 import istick.app.beta.model.UserType
-import istick.app.beta.repository.FirebaseUserRepository
 import istick.app.beta.utils.PerformanceMonitor
 import istick.app.beta.viewmodel.RegistrationViewModel
 

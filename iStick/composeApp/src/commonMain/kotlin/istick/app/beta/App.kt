@@ -13,16 +13,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import istick.app.beta.auth.FirebaseAuthRepository
 import istick.app.beta.di.DependencyInjection
 import istick.app.beta.migration.DataMigrationManager
 import istick.app.beta.migration.DataMigrationManager.MigrationState
 import istick.app.beta.model.Campaign
 import istick.app.beta.model.Car
 import istick.app.beta.model.User
-import istick.app.beta.repository.FirebaseCarRepository
-import istick.app.beta.repository.FirebaseCampaignRepository
-import istick.app.beta.repository.FirebaseUserRepository
 import istick.app.beta.ui.navigation.AppNavigator
 import istick.app.beta.ui.screens.*
 import istick.app.beta.utils.PerformanceMonitor

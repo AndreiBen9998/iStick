@@ -2,12 +2,8 @@
 package istick.app.beta.ui.navigation
 
 import istick.app.beta.auth.AuthRepository
-import istick.app.beta.auth.FirebaseAuthRepository
 import istick.app.beta.repository.CarRepository
 import istick.app.beta.repository.CampaignRepository
-import istick.app.beta.repository.FirebaseCarRepository
-import istick.app.beta.repository.FirebaseCampaignRepository
-import istick.app.beta.repository.FirebaseUserRepository
 import istick.app.beta.repository.UserRepository
 import istick.app.beta.storage.FirebaseStorageRepository
 import istick.app.beta.storage.StorageRepository

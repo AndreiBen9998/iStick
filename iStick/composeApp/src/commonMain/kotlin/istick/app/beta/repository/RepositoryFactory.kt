@@ -29,11 +29,17 @@ object RepositoryFactory {
             DataSource.MOCK -> OptimizedOffersRepository() // Uses the mock data already implemented
             DataSource.FIREBASE -> OptimizedOffersRepository() // Uses the mock data already implemented
             DataSource.MYSQL -> {
-                // Implemented in MySqlOffersRepository.kt as an extension function
-                // Instead of direct instantiation, we use the extension function
-                getOffersRepository()
+                // Create an adapter that adapts MySqlOffersRepository to OptimizedOffersRepository
+                MySqlOffersRepositoryAdapter(MySqlOffersRepository())
             }
         }
+    }
+
+    /**
+     * Get MySQL offers repository directly
+     */
+    fun getMySqlOffersRepository(): MySqlOffersRepository {
+        return MySqlOffersRepository()
     }
 }
 

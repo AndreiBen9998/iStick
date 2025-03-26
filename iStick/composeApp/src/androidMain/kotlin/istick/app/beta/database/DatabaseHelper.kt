@@ -237,5 +237,20 @@ class DatabaseHelper {
             
             dbExecutor.shutdown()
         }
+        /**
+         * Test the database connection
+         * @return true if the connection is successful
+         */
+        fun testConnection(): Boolean {
+            try {
+                val connection = getConnection()
+                val isValid = connection.isValid(1)
+                releaseConnection(connection)
+                return isValid
+            } catch (e: Exception) {
+                Log.e(TAG, "Database connection test failed: ${e.message}", e)
+                return false
+            }
+        }
     }
 }

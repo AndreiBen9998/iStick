@@ -7,11 +7,12 @@ import istick.app.beta.model.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
  * MySQL implementation of offers repository
- * Instead of extending OptimizedOffersRepository, we implement same functionality
  */
 class MySqlOffersRepository {
     private val TAG = "MySqlOffersRepository"
@@ -272,44 +273,16 @@ class MySqlOffersRepository {
 }
 
 /**
- * Factory function to get offers repository based on data source
+ * Adapter class to convert MySqlOffersRepository to OptimizedOffersRepository interface
  */
-fun RepositoryFactory.getOffersRepository(): OptimizedOffersRepository {
-    return when (currentDataSource) {
-        RepositoryFactory.DataSource.MYSQL -> {
-            // Create a wrapper that adapts MySqlOffersRepository to OptimizedOffersRepository
-            MySqlOffersRepositoryWrapper(MySqlOffersRepository())
-        }
-        else -> OptimizedOffersRepository() // Default with mock data
-    }
-}
-
-/**
- * Factory function to get MySQL offers repository directly
- */
-fun RepositoryFactory.getMySqlOffersRepository(): MySqlOffersRepository {
-    return MySqlOffersRepository()
-}
-
-/**
- * Wrapper to adapt MySqlOffersRepository to OptimizedOffersRepository interface
- */
-class MySqlOffersRepositoryWrapper(private val mysqlRepo: MySqlOffersRepository) : OptimizedOffersRepository() {
+class MySqlOffersRepositoryAdapter(private val mysqlRepo: MySqlOffersRepository) : OptimizedOffersRepository() {
+    // Initialize caching
     init {
-        // Observe state from MySQL repo
-        kotlinx.coroutines.GlobalScope.kotlinx.coroutines.launch {
-            mysqlRepo.cachedOffers.collect { offers ->
-                _cachedOffers.value = offers
-            }
-
-            mysqlRepo.hasMorePages.collect { hasMore ->
-                _hasMorePages.value = hasMore
-            }
-        }
+        // Forward calls to underlying repo
     }
 
     override fun getOffers(onSuccess: (List<Campaign>) -> Unit, onError: (Exception) -> Unit) {
-        kotlinx.coroutines.GlobalScope.kotlinx.coroutines.launch {
+        GlobalScope.launch {
             try {
                 mysqlRepo.getOffers(onSuccess, onError)
             } catch (e: Exception) {
@@ -319,7 +292,7 @@ class MySqlOffersRepositoryWrapper(private val mysqlRepo: MySqlOffersRepository)
     }
 
     override fun getNextOffersPage(onSuccess: (List<Campaign>, Boolean) -> Unit, onError: (Exception) -> Unit) {
-        kotlinx.coroutines.GlobalScope.kotlinx.coroutines.launch {
+        GlobalScope.launch {
             try {
                 mysqlRepo.getNextOffersPage(onSuccess, onError)
             } catch (e: Exception) {
@@ -329,7 +302,7 @@ class MySqlOffersRepositoryWrapper(private val mysqlRepo: MySqlOffersRepository)
     }
 
     override fun getOfferDetails(offerId: String, onSuccess: (Campaign) -> Unit, onError: (Exception) -> Unit) {
-        kotlinx.coroutines.GlobalScope.kotlinx.coroutines.launch {
+        GlobalScope.launch {
             try {
                 mysqlRepo.getOfferDetails(offerId, onSuccess, onError)
             } catch (e: Exception) {
@@ -342,4 +315,24 @@ class MySqlOffersRepositoryWrapper(private val mysqlRepo: MySqlOffersRepository)
         mysqlRepo.clearCache()
         super.clearCache()
     }
+}
+
+/**
+ * Factory function to get offers repository based on data source
+ */
+fun getOffersRepository(): OptimizedOffersRepository {
+    return when (RepositoryFactory.currentDataSource) {
+        RepositoryFactory.DataSource.MYSQL -> {
+            // Create an adapter that adapts MySqlOffersRepository to OptimizedOffersRepository
+            MySqlOffersRepositoryAdapter(MySqlOffersRepository())
+        }
+        else -> OptimizedOffersRepository() // Default with mock data
+    }
+}
+
+/**
+ * Factory function to get MySQL offers repository directly
+ */
+fun getMySqlOffersRepository(): MySqlOffersRepository {
+    return MySqlOffersRepository()
 }

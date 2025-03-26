@@ -2,10 +2,14 @@
 package istick.app.beta.ui.navigation
 
 import istick.app.beta.auth.AuthRepository
+import istick.app.beta.auth.DefaultAuthRepository
 import istick.app.beta.repository.CarRepository
 import istick.app.beta.repository.CampaignRepository
+import istick.app.beta.repository.DefaultCarRepository
+import istick.app.beta.repository.DefaultCampaignRepository
+import istick.app.beta.repository.DefaultUserRepository
 import istick.app.beta.repository.UserRepository
-import istick.app.beta.storage.FirebaseStorageRepository
+import istick.app.beta.storage.DefaultStorageRepository
 import istick.app.beta.storage.StorageRepository
 import istick.app.beta.utils.PerformanceMonitor
 import istick.app.beta.viewmodel.CarManagementViewModel
@@ -18,11 +22,11 @@ import istick.app.beta.viewmodel.ProfileViewModel
  * Navigation manager for the app
  */
 class AppNavigator(
-    val authRepository: AuthRepository = FirebaseAuthRepository(),
-    val userRepository: UserRepository = FirebaseUserRepository(authRepository),
-    val campaignRepository: CampaignRepository = FirebaseCampaignRepository(),
-    val carRepository: CarRepository = FirebaseCarRepository(),
-    val storageRepository: StorageRepository = FirebaseStorageRepository(),
+    val authRepository: AuthRepository = DefaultAuthRepository(),
+    val userRepository: UserRepository = DefaultUserRepository(authRepository),
+    val campaignRepository: CampaignRepository = DefaultCampaignRepository(),
+    val carRepository: CarRepository = DefaultCarRepository(),
+    val storageRepository: StorageRepository = DefaultStorageRepository(null),
     val performanceMonitor: PerformanceMonitor
 ) {
     // Screens definition

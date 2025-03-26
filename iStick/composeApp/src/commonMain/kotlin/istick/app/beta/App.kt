@@ -83,9 +83,9 @@ fun App() {
             try {
                 // Check if migration is needed
                 val migrationManager = DataMigrationManager(
-                    userRepository = userRepository as FirebaseUserRepository,
-                    carRepository = DependencyInjection.getCarRepository() as FirebaseCarRepository,
-                    campaignRepository = DependencyInjection.getCampaignRepository() as FirebaseCampaignRepository,
+                    userRepository = userRepository as DefaultUserRepository,
+                    carRepository = DependencyInjection.getCarRepository() as DefaultCarRepository,
+                    campaignRepository = DependencyInjection.getCampaignRepository() as DefaultCampaignRepository,
                     storageRepository = DependencyInjection.getStorageRepository()
                 )
 

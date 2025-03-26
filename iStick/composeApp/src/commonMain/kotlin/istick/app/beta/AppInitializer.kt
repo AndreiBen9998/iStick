@@ -21,16 +21,16 @@ object AppInitializer {
         // Start performance monitoring
         val performanceMonitor = PerformanceMonitor(context)
         performanceMonitor.startTrace("app_initialization")
-        
+
         try {
             // Set up platform-specific dependencies
             DependencyInjection.setPlatformContext(context)
-            
+
             val networkMonitor = createNetworkMonitor(context)
             val analyticsManager = createAnalyticsManager()
             val ocrProcessor = createOcrProcessor(context)
             val storageRepository = DefaultStorageRepository(context)
-            
+
             // Initialize DI
             DependencyInjection.initPlatformDependencies(
                 context = context,
@@ -40,10 +40,10 @@ object AppInitializer {
                 performanceMonitor = performanceMonitor,
                 storageRepository = storageRepository
             )
-            
+
             // Initialize repositories
             DependencyInjection.initRepositories()
-            
+
             // Initialize database connection
             performanceMonitor.startTrace("database_initialization")
             try {
@@ -56,7 +56,7 @@ object AppInitializer {
             } finally {
                 performanceMonitor.stopTrace("database_initialization")
             }
-            
+
             performanceMonitor.recordMetric("app_initialized", 1)
         } catch (e: Exception) {
             performanceMonitor.recordMetric("app_initialization_failed", 1)
@@ -65,7 +65,7 @@ object AppInitializer {
             performanceMonitor.stopTrace("app_initialization")
         }
     }
-    
+
     /**
      * Clean up resources when the app is shutting down
      */
@@ -73,7 +73,7 @@ object AppInitializer {
         try {
             // Close database connections
             DatabaseHelper.closeAllConnections()
-            
+
             // Clean up other resources
             DependencyInjection.cleanup()
         } catch (e: Exception) {

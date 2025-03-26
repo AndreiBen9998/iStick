@@ -293,7 +293,7 @@ private fun handleLogin(
     setError: (String?) -> Unit,
     onSuccess: () -> Unit,
     coroutineScope: kotlinx.coroutines.CoroutineScope
-)
+) {
     // Validate input
     if (email.isEmpty() || password.isEmpty()) {
         setError("Email and password cannot be empty")

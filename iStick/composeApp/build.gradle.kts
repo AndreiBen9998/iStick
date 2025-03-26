@@ -109,6 +109,8 @@ dependencies {
     debugImplementation(compose.uiTooling)
     implementation("androidx.activity:activity-compose:1.8.0")
     implementation("com.google.mlkit:text-recognition:16.0.0")
+    implementation("mysql:mysql-connector-java:8.0.33")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
 }
 
 configurations.all {

@@ -53,7 +53,7 @@ fun LoginScreen(
     var isLoading by remember { mutableStateOf(false) }
 
     // Auth repository
-    val authRepository = remember { FirebaseAuthRepository() }
+    val authRepository = remember { istick.app.beta.di.DependencyInjection.getAuthRepository() }
 
     // Coroutine scope
     val coroutineScope = rememberCoroutineScope()
@@ -288,12 +288,12 @@ fun LoginScreen(
 private fun handleLogin(
     email: String,
     password: String,
-    authRepository: FirebaseAuthRepository,
+    authRepository: istick.app.beta.auth.AuthRepository,
     setLoading: (Boolean) -> Unit,
     setError: (String?) -> Unit,
     onSuccess: () -> Unit,
     coroutineScope: kotlinx.coroutines.CoroutineScope
-) {
+)
     // Validate input
     if (email.isEmpty() || password.isEmpty()) {
         setError("Email and password cannot be empty")

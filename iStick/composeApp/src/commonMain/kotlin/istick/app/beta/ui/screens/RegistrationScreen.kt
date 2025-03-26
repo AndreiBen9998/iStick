@@ -48,11 +48,16 @@ fun RegistrationScreen(
     }
 
     // Create repositories
-    val authRepository = remember { FirebaseAuthRepository() }
-    val userRepository = remember { FirebaseUserRepository(authRepository) }
+    val authRepository = remember { istick.app.beta.di.DependencyInjection.getAuthRepository() }
+    val userRepository = remember { istick.app.beta.di.DependencyInjection.getUserRepository() }
 
     // Create ViewModel
-    val viewModel = remember { RegistrationViewModel(authRepository, userRepository) }
+    val viewModel = remember {
+        istick.app.beta.viewmodel.ViewModelFactory.createRegistrationViewModel(
+            authRepository,
+            userRepository
+        )
+    }
 
     // Get ViewModel state
     val registrationStep by viewModel.registrationStep.collectAsState()

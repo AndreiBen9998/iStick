@@ -19,7 +19,7 @@ object RepositoryFactory {
     /**
      * Current data source to use
      */
-    var currentDataSource: DataSource = DataSource.FIREBASE
+    var currentDataSource: DataSource = DataSource.MYSQL
 
     /**
      * Get an instance of OptimizedOffersRepository
@@ -28,7 +28,11 @@ object RepositoryFactory {
         return when (currentDataSource) {
             DataSource.MOCK -> OptimizedOffersRepository() // Uses the mock data already implemented
             DataSource.FIREBASE -> OptimizedOffersRepository() // Uses the mock data already implemented
-            DataSource.MYSQL -> MySqlOffersRepository() // Uses the MySQL implementation
+            DataSource.MYSQL -> {
+                // Implemented in MySqlOffersRepository.kt as an extension function
+                // Instead of direct instantiation, we use the extension function
+                getOffersRepository()
+            }
         }
     }
 }
@@ -45,11 +49,4 @@ fun DependencyInjection.setDataSource(dataSource: RepositoryFactory.DataSource) 
  */
 fun DependencyInjection.getDataSource(): RepositoryFactory.DataSource {
     return RepositoryFactory.currentDataSource
-}
-
-/**
- * Get an instance of ViewModelFactory
- */
-fun DependencyInjection.getViewModelFactory(): ViewModelFactory {
-    return ViewModelFactory
 }

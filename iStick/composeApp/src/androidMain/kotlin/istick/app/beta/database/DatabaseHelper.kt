@@ -13,6 +13,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 
+import android.util.Log
+private const val TAG = "DatabaseHelper"
+
 /**
  * Helper class for managing database connections
  */

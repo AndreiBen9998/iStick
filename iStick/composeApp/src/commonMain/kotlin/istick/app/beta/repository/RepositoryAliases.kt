@@ -3,8 +3,6 @@ package istick.app.beta.repository
 
 import istick.app.beta.auth.MySqlAuthRepository
 
-// Default implementation type aliases - to simplify migration from Firebase to MySQL
-typealias DefaultUserRepository = MySqlUserRepository
 typealias DefaultCarRepository = MySqlCarRepository
 typealias DefaultCampaignRepository = MySqlCampaignRepository
 typealias DefaultStorageRepository = istick.app.beta.storage.MySqlStorageRepository

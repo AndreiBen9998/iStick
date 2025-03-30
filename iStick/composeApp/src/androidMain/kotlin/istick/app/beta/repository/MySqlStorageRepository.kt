@@ -12,7 +12,7 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
-
+import istick.app.beta.storage.StorageRepository
 /**
  * MySQL implementation of StorageRepository
  * This implementation stores images in the local file system and

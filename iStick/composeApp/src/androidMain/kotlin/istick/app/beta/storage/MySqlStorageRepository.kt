@@ -36,7 +36,9 @@ class MySqlStorageRepository(private val context: Context) : StorageRepository {
             val compressedBytes = compressImage(imageBytes, 80)
 
             // Write to file
-            FileOutputStream(imageFile).use { it.write(compressedBytes) }
+            FileOutputStream(imageFile).use { output ->
+                output.write(compressedBytes)
+            }
 
             // Create record in database
             val imageId = DatabaseHelper.executeInsert(

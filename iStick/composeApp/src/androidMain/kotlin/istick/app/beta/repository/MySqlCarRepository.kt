@@ -17,7 +17,7 @@ class MySqlCarRepository : CarRepository {
     private val TAG = "MySqlCarRepository"
     private val _userCars = MutableStateFlow<List<Car>>(emptyList())
     override val userCars: StateFlow<List<Car>> = _userCars
-    
+
     override suspend fun fetchUserCars(userId: String): Result<List<Car>> = withContext(Dispatchers.IO) {
         try {
             val cars = DatabaseHelper.executeQuery(
@@ -29,10 +29,10 @@ class MySqlCarRepository : CarRepository {
                 listOf(userId.toLong())
             ) { resultSet ->
                 val carsList = mutableListOf<Car>()
-                
+
                 while (resultSet.next()) {
                     val carId = resultSet.getLong("id").toString()
-                    
+
                     // Basic car details
                     val car = Car(
                         id = carId,
@@ -45,19 +45,21 @@ class MySqlCarRepository : CarRepository {
                         photos = emptyList(), // We'll fill these in separately
                         verification = emptyList() // We'll fill these in separately
                     )
-                    
+
                     carsList.add(car)
                 }
-                
-                // For each car, get photos and verifications
-                carsList.map { car ->
+
+                // Update the cars with photos and verifications
+                val carsWithDetails = carsList.map { car ->
                     car.copy(
                         photos = getCarPhotos(car.id),
                         verification = getCarVerifications(car.id)
                     )
                 }
+
+                carsWithDetails
             }
-            
+
             _userCars.value = cars
             return@withContext Result.success(cars)
         } catch (e: Exception) {
@@ -65,12 +67,12 @@ class MySqlCarRepository : CarRepository {
             return@withContext Result.failure(e)
         }
     }
-    
+
     override suspend fun addCar(car: Car): Result<Car> = withContext(Dispatchers.IO) {
         try {
             // Extract user ID from car owner ID format
             val userId = car.id.substringBefore("_") // Assuming car.id is in format "userId_car_index"
-            
+
             // Insert car
             val carId = DatabaseHelper.executeInsert(
                 """
@@ -78,16 +80,16 @@ class MySqlCarRepository : CarRepository {
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 listOf(
-                    userId.toLong(), 
-                    car.make, 
-                    car.model, 
-                    car.year, 
-                    car.color, 
-                    car.licensePlate, 
+                    userId.toLong(),
+                    car.make,
+                    car.model,
+                    car.year,
+                    car.color,
+                    car.licensePlate,
                     car.currentMileage
                 )
             )
-            
+
             if (carId > 0) {
                 // Insert photos if any
                 car.photos.forEach { photoUrl ->
@@ -96,7 +98,7 @@ class MySqlCarRepository : CarRepository {
                         listOf(carId, photoUrl)
                     )
                 }
-                
+
                 // Get the newly created car
                 return@withContext getCar(carId.toString())
             } else {
@@ -107,7 +109,7 @@ class MySqlCarRepository : CarRepository {
             return@withContext Result.failure(e)
         }
     }
-    
+
     override suspend fun updateCar(car: Car): Result<Car> = withContext(Dispatchers.IO) {
         try {
             // Update car details
@@ -118,23 +120,23 @@ class MySqlCarRepository : CarRepository {
                 WHERE id = ?
                 """,
                 listOf(
-                    car.make, 
-                    car.model, 
-                    car.year, 
-                    car.color, 
-                    car.licensePlate, 
+                    car.make,
+                    car.model,
+                    car.year,
+                    car.color,
+                    car.licensePlate,
                     car.currentMileage,
                     car.id.toLong()
                 )
             )
-            
+
             if (result > 0) {
                 // Clear existing photos and add new ones
                 DatabaseHelper.executeUpdate(
                     "DELETE FROM car_photos WHERE car_id = ?",
                     listOf(car.id.toLong())
                 )
-                
+
                 // Insert new photos
                 car.photos.forEach { photoUrl ->
                     DatabaseHelper.executeInsert(
@@ -142,7 +144,7 @@ class MySqlCarRepository : CarRepository {
                         listOf(car.id.toLong(), photoUrl)
                     )
                 }
-                
+
                 // Return updated car
                 return@withContext getCar(car.id)
             } else {
@@ -153,7 +155,7 @@ class MySqlCarRepository : CarRepository {
             return@withContext Result.failure(e)
         }
     }
-    
+
     override suspend fun deleteCar(carId: String): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
             // First delete related records (photos, verifications)
@@ -161,25 +163,25 @@ class MySqlCarRepository : CarRepository {
                 "DELETE FROM car_photos WHERE car_id = ?",
                 listOf(carId.toLong())
             )
-            
+
             DatabaseHelper.executeUpdate(
                 "DELETE FROM mileage_verifications WHERE car_id = ?",
                 listOf(carId.toLong())
             )
-            
+
             // Then delete the car itself
             val result = DatabaseHelper.executeUpdate(
                 "DELETE FROM cars WHERE id = ?",
                 listOf(carId.toLong())
             )
-            
+
             return@withContext Result.success(result > 0)
         } catch (e: Exception) {
             Log.e(TAG, "Error deleting car: ${e.message}", e)
             return@withContext Result.failure(e)
         }
     }
-    
+
     override suspend fun addMileageVerification(carId: String, verification: MileageVerification): Result<MileageVerification> = withContext(Dispatchers.IO) {
         try {
             // Insert verification
@@ -198,14 +200,14 @@ class MySqlCarRepository : CarRepository {
                     if (verification.isVerified) 1 else 0
                 )
             )
-            
+
             if (verificationId > 0) {
                 // Update car's current mileage
                 DatabaseHelper.executeUpdate(
                     "UPDATE cars SET current_mileage = ? WHERE id = ?",
                     listOf(verification.mileage, carId.toLong())
                 )
-                
+
                 // Return the verification with its new ID
                 val newVerification = verification.copy(id = verificationId.toString())
                 return@withContext Result.success(newVerification)
@@ -217,7 +219,7 @@ class MySqlCarRepository : CarRepository {
             return@withContext Result.failure(e)
         }
     }
-    
+
     override suspend fun getCar(carId: String): Result<Car> = withContext(Dispatchers.IO) {
         try {
             val car = DatabaseHelper.executeQuery(
@@ -233,14 +235,14 @@ class MySqlCarRepository : CarRepository {
                         color = resultSet.getString("color"),
                         licensePlate = resultSet.getString("license_plate"),
                         currentMileage = resultSet.getInt("current_mileage"),
-                        photos = getCarPhotos(carId),
-                        verification = getCarVerifications(carId)
+                        photos = getCarPhotosFromDatabase(carId),
+                        verification = getCarVerificationsFromDatabase(carId)
                     )
                 } else {
                     null
                 }
             }
-            
+
             if (car != null) {
                 return@withContext Result.success(car)
             } else {
@@ -251,9 +253,14 @@ class MySqlCarRepository : CarRepository {
             return@withContext Result.failure(e)
         }
     }
-    
+
     // Helper method to get car photos
     private suspend fun getCarPhotos(carId: String): List<String> {
+        return getCarPhotosFromDatabase(carId)
+    }
+
+    // Helper method to get car photos with direct database call
+    private suspend fun getCarPhotosFromDatabase(carId: String): List<String> {
         return DatabaseHelper.executeQuery(
             "SELECT photo_url FROM car_photos WHERE car_id = ? ORDER BY id",
             listOf(carId.toLong())
@@ -265,9 +272,14 @@ class MySqlCarRepository : CarRepository {
             photos
         }
     }
-    
+
     // Helper method to get car verifications
     private suspend fun getCarVerifications(carId: String): List<MileageVerification> {
+        return getCarVerificationsFromDatabase(carId)
+    }
+
+    // Helper method to get car verifications with direct database call
+    private suspend fun getCarVerificationsFromDatabase(carId: String): List<MileageVerification> {
         return DatabaseHelper.executeQuery(
             """
             SELECT * FROM mileage_verifications 
@@ -293,6 +305,3 @@ class MySqlCarRepository : CarRepository {
         }
     }
 }
-
-// Define this as the default implementation to use
-typealias DefaultCarRepository = MySqlCarRepository

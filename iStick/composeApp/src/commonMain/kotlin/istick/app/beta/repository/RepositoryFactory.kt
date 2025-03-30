@@ -2,6 +2,7 @@
 package istick.app.beta.repository
 
 import istick.app.beta.di.DependencyInjection
+import android.util.Log
 
 /**
  * Factory for creating repository instances
@@ -29,8 +30,13 @@ object RepositoryFactory {
             DataSource.MOCK -> OptimizedOffersRepository() // Uses the mock data already implemented
             DataSource.FIREBASE -> OptimizedOffersRepository() // Uses the mock data already implemented
             DataSource.MYSQL -> {
-                // Create an adapter that adapts MySqlOffersRepository to OptimizedOffersRepository
-                MySqlOffersRepositoryAdapter(MySqlOffersRepository())
+                // Create a standard instance but initialize with MySQL data
+                try {
+                    createMySqlOffersRepositoryAdapter()
+                } catch (e: Exception) {
+                    Log.e("RepositoryFactory", "Error creating MySQL adapter, falling back to mock", e)
+                    OptimizedOffersRepository() // Fallback to mock data
+                }
             }
         }
     }

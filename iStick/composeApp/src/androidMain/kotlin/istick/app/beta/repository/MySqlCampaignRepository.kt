@@ -9,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 /**
@@ -16,17 +17,17 @@ import kotlinx.coroutines.withContext
  */
 class MySqlCampaignRepository(private val authRepository: AuthRepository) : CampaignRepository {
     private val TAG = "MySqlCampaignRepository"
-    
+
     private val _activeCampaigns = MutableStateFlow<List<Campaign>>(emptyList())
     override val activeCampaigns: StateFlow<List<Campaign>> = _activeCampaigns
-    
+
     private val _userApplications = MutableStateFlow<List<CampaignApplication>>(emptyList())
     override val userApplications: StateFlow<List<CampaignApplication>> = _userApplications
-    
+
     override fun observeActiveCampaigns(): Flow<List<Campaign>> {
         return activeCampaigns
     }
-    
+
     override suspend fun fetchActiveCampaigns(): Result<List<Campaign>> = withContext(Dispatchers.IO) {
         try {
             val campaigns = DatabaseHelper.executeQuery(
@@ -40,7 +41,7 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
                 emptyList()
             ) { resultSet ->
                 val offersList = mutableListOf<Campaign>()
-                
+
                 while (resultSet.next()) {
                     // Convert from database schema to Campaign model
                     val campaignId = resultSet.getLong("id").toString()
@@ -68,13 +69,13 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
                         createdAt = resultSet.getTimestamp("created_at")?.time ?: System.currentTimeMillis(),
                         updatedAt = resultSet.getTimestamp("updated_at")?.time ?: System.currentTimeMillis()
                     )
-                    
+
                     offersList.add(campaign)
                 }
-                
+
                 offersList
             }
-            
+
             _activeCampaigns.value = campaigns
             return@withContext Result.success(campaigns)
         } catch (e: Exception) {
@@ -82,7 +83,7 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
             return@withContext Result.failure(e)
         }
     }
-    
+
     override suspend fun fetchCampaignDetails(campaignId: String): Result<Campaign> = withContext(Dispatchers.IO) {
         try {
             val campaign = DatabaseHelper.executeQuery(
@@ -95,9 +96,18 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
                 listOf(campaignId.toLong())
             ) { resultSet ->
                 if (resultSet.next()) {
-                    // Get campaign benefits
-                    val benefits = getCampaignBenefits(campaignId)
-                    
+                    // Get campaign benefits - execute this query in the same coroutine context
+                    val benefits = DatabaseHelper.executeQuery(
+                        "SELECT benefit_text FROM offer_benefits WHERE offer_id = ?",
+                        listOf(campaignId.toLong())
+                    ) { benefitResultSet ->
+                        val benefitsList = mutableListOf<String>()
+                        while (benefitResultSet.next()) {
+                            benefitsList.add(benefitResultSet.getString("benefit_text"))
+                        }
+                        benefitsList
+                    }
+
                     // Convert from database schema to Campaign model
                     Campaign(
                         id = campaignId,
@@ -122,14 +132,14 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
                         status = CampaignStatus.ACTIVE, // Default for "verified" in DB
                         createdAt = resultSet.getTimestamp("created_at")?.time ?: System.currentTimeMillis(),
                         updatedAt = resultSet.getTimestamp("updated_at")?.time ?: System.currentTimeMillis(),
-                        applicants = getCampaignApplicants(campaignId),
-                        approvedApplicants = getCampaignApprovedApplicants(campaignId)
+                        applicants = getApplicantsForCampaign(campaignId),
+                        approvedApplicants = getApprovedApplicantsForCampaign(campaignId)
                     )
                 } else {
                     null
                 }
             }
-            
+
             if (campaign != null) {
                 return@withContext Result.success(campaign)
             } else {
@@ -140,7 +150,7 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
             return@withContext Result.failure(e)
         }
     }
-    
+
     override suspend fun fetchUserApplications(userId: String): Result<List<CampaignApplication>> = withContext(Dispatchers.IO) {
         try {
             val applications = DatabaseHelper.executeQuery(
@@ -152,7 +162,7 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
                 listOf(userId.toLong())
             ) { resultSet ->
                 val appList = mutableListOf<CampaignApplication>()
-                
+
                 while (resultSet.next()) {
                     appList.add(
                         CampaignApplication(
@@ -167,10 +177,10 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
                         )
                     )
                 }
-                
+
                 appList
             }
-            
+
             _userApplications.value = applications
             return@withContext Result.success(applications)
         } catch (e: Exception) {
@@ -178,12 +188,12 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
             return@withContext Result.failure(e)
         }
     }
-    
+
     override suspend fun applyCampaign(campaignId: String, carId: String): Result<CampaignApplication> = withContext(Dispatchers.IO) {
         try {
-            val userId = authRepository.getCurrentUserId() 
+            val userId = authRepository.getCurrentUserId()
                 ?: return@withContext Result.failure(Exception("User not authenticated"))
-                
+
             // Check if application already exists
             val existingApp = DatabaseHelper.executeQuery(
                 """
@@ -194,11 +204,11 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
             ) { resultSet ->
                 if (resultSet.next()) resultSet.getLong("id").toString() else null
             }
-            
+
             if (existingApp != null) {
                 return@withContext Result.failure(Exception("You have already applied to this campaign"))
             }
-            
+
             // Insert application
             val applicationId = DatabaseHelper.executeInsert(
                 """
@@ -208,7 +218,7 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
                 """,
                 listOf(userId.toLong(), campaignId.toLong(), carId.toLong())
             )
-            
+
             if (applicationId > 0) {
                 // Return the new application
                 val application = CampaignApplication(
@@ -220,7 +230,7 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
                     appliedAt = System.currentTimeMillis(),
                     updatedAt = System.currentTimeMillis()
                 )
-                
+
                 return@withContext Result.success(application)
             } else {
                 return@withContext Result.failure(Exception("Failed to apply to campaign"))
@@ -230,7 +240,7 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
             return@withContext Result.failure(e)
         }
     }
-    
+
     override suspend fun updateCampaignStatus(campaignId: String, status: CampaignStatus): Result<Campaign> = withContext(Dispatchers.IO) {
         try {
             // Map our status to the database status
@@ -241,7 +251,7 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
                 CampaignStatus.CANCELLED -> "cancelled"
                 else -> "draft"
             }
-            
+
             // Update status
             val result = DatabaseHelper.executeUpdate(
                 """
@@ -251,7 +261,7 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
                 """,
                 listOf(dbStatus, campaignId.toLong())
             )
-            
+
             if (result > 0) {
                 // Fetch updated campaign
                 return@withContext fetchCampaignDetails(campaignId)
@@ -263,23 +273,9 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
             return@withContext Result.failure(e)
         }
     }
-    
-    // Helper method to get campaign benefits
-    private suspend fun getCampaignBenefits(campaignId: String): List<String> {
-        return DatabaseHelper.executeQuery(
-            "SELECT benefit_text FROM offer_benefits WHERE offer_id = ?",
-            listOf(campaignId.toLong())
-        ) { resultSet ->
-            val benefits = mutableListOf<String>()
-            while (resultSet.next()) {
-                resultSet.getString("benefit_text")?.let { benefits.add(it) }
-            }
-            benefits
-        }
-    }
-    
+
     // Helper method to get campaign applicants
-    private suspend fun getCampaignApplicants(campaignId: String): List<String> {
+    private suspend fun getApplicantsForCampaign(campaignId: String): List<String> {
         return DatabaseHelper.executeQuery(
             "SELECT DISTINCT driver_id FROM driver_applications WHERE offer_id = ?",
             listOf(campaignId.toLong())
@@ -291,9 +287,9 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
             applicants
         }
     }
-    
+
     // Helper method to get approved applicants
-    private suspend fun getCampaignApprovedApplicants(campaignId: String): List<String> {
+    private suspend fun getApprovedApplicantsForCampaign(campaignId: String): List<String> {
         return DatabaseHelper.executeQuery(
             """
             SELECT DISTINCT driver_id 
@@ -309,7 +305,7 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
             approved
         }
     }
-    
+
     // Helper to parse sticker positions from database
     private fun parsePositions(positionString: String): List<StickerPosition> {
         return when(positionString.lowercase()) {
@@ -323,7 +319,7 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
             else -> listOf(StickerPosition.SIDE_PANEL) // Default
         }
     }
-    
+
     // Helper to parse application status from database
     private fun parseApplicationStatus(statusString: String): ApplicationStatus {
         return when(statusString.lowercase()) {
@@ -334,6 +330,3 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
         }
     }
 }
-
-// Define this as the default implementation to use
-typealias DefaultCampaignRepository = MySqlCampaignRepository

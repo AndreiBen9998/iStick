@@ -14,8 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import istick.app.beta.di.DependencyInjection
-import istick.app.beta.migration.DataMigrationManager
-import istick.app.beta.migration.DataMigrationManager.MigrationState
 import istick.app.beta.model.Campaign
 import istick.app.beta.model.Car
 import istick.app.beta.model.User
@@ -24,6 +22,9 @@ import istick.app.beta.ui.screens.*
 import istick.app.beta.utils.PerformanceMonitor
 import istick.app.beta.utils.Preferences
 import kotlinx.coroutines.launch
+import istick.app.beta.repository.MySqlUserRepository
+import istick.app.beta.repository.MySqlCarRepository
+import istick.app.beta.repository.MySqlCampaignRepository
 
 // Update AppState to include MIGRATION state
 enum class AppState {
@@ -42,9 +43,8 @@ fun App() {
     }
 
     // Platform-specific context handling
-// Get the platform context
+    // Get the platform context
     val platformContext = getPlatformContextComposable()
-
 
     // Initialize performance monitor
     val performanceMonitor = remember {
@@ -81,70 +81,20 @@ fun App() {
         // Initialize repositories
         scope.launch {
             try {
-                // Check if migration is needed
-                val migrationManager = DataMigrationManager(
-                    userRepository = userRepository as DefaultUserRepository,
-                    carRepository = DependencyInjection.getCarRepository() as DefaultCarRepository,
-                    campaignRepository = DependencyInjection.getCampaignRepository() as DefaultCampaignRepository,
-                    storageRepository = DependencyInjection.getStorageRepository()
-                )
+                // Show intro or login screen
+                appState = if (!hasSeenIntro) AppState.INTRO else AppState.LOGIN
 
-                if (migrationManager.isMigrationNeeded()) {
-                    // Show migration UI
-                    appState = AppState.MIGRATION
+                // Check if user is already logged in
+                val isLoggedIn = authRepository.isUserLoggedIn()
 
-                    // Start migration with mock data (or retrieve from local storage)
-                    val mockUsers = getMockUsers()
-                    val mockCars = getMockCars()
-                    val mockCampaigns = getMockCampaigns()
-
-                    migrationManager.startMigration(mockUsers, mockCars, mockCampaigns)
-
-                    // Observe migration state
-                    migrationManager.migrationState.collect { state ->
-                        when (state) {
-                            is MigrationState.InProgress -> migrationProgress = state.percentComplete
-                            is MigrationState.Completed -> {
-                                // Check login status and intro status
-                                if (!hasSeenIntro) {
-                                    appState = AppState.INTRO
-                                } else if (authRepository.isUserLoggedIn()) {
-                                    appState = AppState.MAIN
-
-                                    // Track analytics
-                                    analyticsManager.trackLogin("auto")
-                                } else {
-                                    appState = AppState.LOGIN
-                                }
-                            }
-                            is MigrationState.Failed -> {
-                                migrationError = state.error
-                                // If migration fails, proceed to normal flow
-                                if (!hasSeenIntro) {
-                                    appState = AppState.INTRO
-                                } else {
-                                    appState = AppState.LOGIN
-                                }
-                            }
-                            else -> {}
-                        }
+                appState = when {
+                    !hasSeenIntro -> AppState.INTRO
+                    isLoggedIn -> {
+                        // Track auto-login in analytics
+                        analyticsManager.trackLogin("auto")
+                        AppState.MAIN
                     }
-                } else {
-                    // No migration needed, proceed with normal flow
-
-                    // Check if user is already logged in
-                    val isLoggedIn = authRepository.isUserLoggedIn()
-
-                    // Set initial screen based on intro status and login status
-                    appState = when {
-                        !hasSeenIntro -> AppState.INTRO
-                        isLoggedIn -> {
-                            // Track auto-login in analytics
-                            analyticsManager.trackLogin("auto")
-                            AppState.MAIN
-                        }
-                        else -> AppState.LOGIN
-                    }
+                    else -> AppState.LOGIN
                 }
             } catch (e: Exception) {
                 println("Error during initialization: ${e.message}")

@@ -9,7 +9,6 @@ import istick.app.beta.repository.DefaultCarRepository
 import istick.app.beta.repository.DefaultCampaignRepository
 import istick.app.beta.repository.DefaultUserRepository
 import istick.app.beta.repository.UserRepository
-import istick.app.beta.storage.DefaultStorageRepository
 import istick.app.beta.storage.StorageRepository
 import istick.app.beta.utils.PerformanceMonitor
 import istick.app.beta.viewmodel.CarManagementViewModel
@@ -17,18 +16,29 @@ import istick.app.beta.viewmodel.CampaignDetailViewModel
 import istick.app.beta.viewmodel.HomeViewModel
 import istick.app.beta.viewmodel.MileageVerificationViewModel
 import istick.app.beta.viewmodel.ProfileViewModel
+import istick.app.beta.di.DependencyInjection
 
 /**
  * Navigation manager for the app
  */
 class AppNavigator(
-    val authRepository: AuthRepository = DefaultAuthRepository(),
-    val userRepository: UserRepository = DefaultUserRepository(authRepository),
-    val campaignRepository: CampaignRepository = DefaultCampaignRepository(),
-    val carRepository: CarRepository = DefaultCarRepository(),
-    val storageRepository: StorageRepository = DefaultStorageRepository(null),
+    val authRepository: AuthRepository,
+    val userRepository: UserRepository,
+    val campaignRepository: CampaignRepository,
+    val carRepository: CarRepository,
+    val storageRepository: StorageRepository,
     val performanceMonitor: PerformanceMonitor
 ) {
+    // Alternative constructor that gets dependencies from DI
+    constructor(performanceMonitor: PerformanceMonitor) : this(
+        authRepository = DependencyInjection.getAuthRepository(),
+        userRepository = DependencyInjection.getUserRepository(),
+        campaignRepository = DependencyInjection.getCampaignRepository(),
+        carRepository = DependencyInjection.getCarRepository(),
+        storageRepository = DependencyInjection.getStorageRepository(),
+        performanceMonitor = performanceMonitor
+    )
+
     // Screens definition
     sealed class Screen {
         // Auth screens

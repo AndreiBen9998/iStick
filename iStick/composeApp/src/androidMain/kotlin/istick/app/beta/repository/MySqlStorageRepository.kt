@@ -21,22 +21,24 @@ import istick.app.beta.storage.StorageRepository
 class MySqlStorageRepository(private val context: Context) : StorageRepository {
     private val TAG = "MySqlStorageRepository"
     private val STORAGE_DIR = "app_images"
-    
+
     override suspend fun uploadImage(imageBytes: ByteArray, fileName: String): Result<String> = withContext(Dispatchers.IO) {
         try {
             // First save the image to local storage
             val storageDir = File(context.filesDir, STORAGE_DIR).apply {
                 if (!exists()) mkdirs()
             }
-            
+
             // Create file
             val imageFile = File(storageDir, fileName)
-            
+
             // Compress the image before saving
             val compressedBytes = compressImage(imageBytes, 80)
-            
-            // Write to file
-            FileOutputStream(imageFile).use { it.write(compressedBytes) }
+
+            // Write to file - Fix the ambiguity by specifying parameter types
+            FileOutputStream(imageFile).use { output ->
+                output.write(compressedBytes, 0, compressedBytes.size)
+            }
             
             // Create record in database
             val imageId = DatabaseHelper.executeInsert(
@@ -240,5 +242,3 @@ class MySqlStorageRepository(private val context: Context) : StorageRepository {
     }
 }
 
-// Define this as the default implementation to use
-typealias DefaultStorageRepository = MySqlStorageRepository

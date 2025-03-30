@@ -275,9 +275,11 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
         }
     }
 
+// Update the helper methods in MySqlCampaignRepository.kt
+
     // Helper method to get campaign applicants using runBlocking
     private fun getApplicantsForCampaign(campaignId: String): List<String> {
-        return runBlocking {
+        return runBlocking(Dispatchers.IO) {
             getApplicantsForCampaignSuspend(campaignId)
         }
     }
@@ -298,7 +300,7 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
 
     // Helper method to get approved applicants using runBlocking
     private fun getApprovedApplicantsForCampaign(campaignId: String): List<String> {
-        return runBlocking {
+        return runBlocking(Dispatchers.IO) {
             getApprovedApplicantsForCampaignSuspend(campaignId)
         }
     }
@@ -307,10 +309,10 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
     private suspend fun getApprovedApplicantsForCampaignSuspend(campaignId: String): List<String> {
         return DatabaseHelper.executeQuery(
             """
-            SELECT DISTINCT driver_id 
-            FROM driver_applications 
-            WHERE offer_id = ? AND status = 'approved'
-            """,
+        SELECT DISTINCT driver_id 
+        FROM driver_applications 
+        WHERE offer_id = ? AND status = 'approved'
+        """,
             listOf(campaignId.toLong())
         ) { resultSet ->
             val approved = mutableListOf<String>()

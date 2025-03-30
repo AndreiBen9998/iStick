@@ -7,7 +7,7 @@ import istick.app.beta.database.DatabaseHelper
 import istick.app.beta.di.DependencyInjection
 import istick.app.beta.network.createNetworkMonitor
 import istick.app.beta.ocr.createOcrProcessor
-import istick.app.beta.storage.DefaultStorageRepository
+import istick.app.beta.storage.MySqlStorageRepository  // Use direct import instead of alias
 import istick.app.beta.utils.PerformanceMonitor
 
 /**

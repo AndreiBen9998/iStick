@@ -257,7 +257,7 @@ class MySqlCarRepository : CarRepository {
 
     // Helper method to get car photos - use runBlocking to wrap suspend function
     private fun getCarPhotos(carId: String): List<String> {
-        return runBlocking {
+        return runBlocking(Dispatchers.IO) {
             getCarPhotosFromDatabase(carId)
         }
     }
@@ -278,7 +278,7 @@ class MySqlCarRepository : CarRepository {
 
     // Helper method to get car verifications - use runBlocking to wrap suspend function
     private fun getCarVerifications(carId: String): List<MileageVerification> {
-        return runBlocking {
+        return runBlocking(Dispatchers.IO) {
             getCarVerificationsFromDatabase(carId)
         }
     }
@@ -287,10 +287,10 @@ class MySqlCarRepository : CarRepository {
     private suspend fun getCarVerificationsFromDatabase(carId: String): List<MileageVerification> {
         return DatabaseHelper.executeQuery(
             """
-            SELECT * FROM mileage_verifications 
-            WHERE car_id = ? 
-            ORDER BY timestamp DESC
-            """,
+        SELECT * FROM mileage_verifications 
+        WHERE car_id = ? 
+        ORDER BY timestamp DESC
+        """,
             listOf(carId.toLong())
         ) { resultSet ->
             val verifications = mutableListOf<MileageVerification>()
@@ -308,5 +308,4 @@ class MySqlCarRepository : CarRepository {
             }
             verifications
         }
-    }
-}
+    }}

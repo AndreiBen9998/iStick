@@ -6,4 +6,3 @@ import istick.app.beta.auth.AuthRepository
 /**
  * Placeholder type alias to map Firebase campaign repository to MySQL implementation
  */
-typealias FirebaseCampaignRepository = DefaultCampaignRepository

@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
 /**
@@ -274,8 +275,15 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
         }
     }
 
-    // Helper method to get campaign applicants
-    private suspend fun getApplicantsForCampaign(campaignId: String): List<String> {
+    // Helper method to get campaign applicants using runBlocking
+    private fun getApplicantsForCampaign(campaignId: String): List<String> {
+        return runBlocking {
+            getApplicantsForCampaignSuspend(campaignId)
+        }
+    }
+
+    // Suspend version of the helper method
+    private suspend fun getApplicantsForCampaignSuspend(campaignId: String): List<String> {
         return DatabaseHelper.executeQuery(
             "SELECT DISTINCT driver_id FROM driver_applications WHERE offer_id = ?",
             listOf(campaignId.toLong())
@@ -288,8 +296,15 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
         }
     }
 
-    // Helper method to get approved applicants
-    private suspend fun getApprovedApplicantsForCampaign(campaignId: String): List<String> {
+    // Helper method to get approved applicants using runBlocking
+    private fun getApprovedApplicantsForCampaign(campaignId: String): List<String> {
+        return runBlocking {
+            getApprovedApplicantsForCampaignSuspend(campaignId)
+        }
+    }
+
+    // Suspend version of the helper method
+    private suspend fun getApprovedApplicantsForCampaignSuspend(campaignId: String): List<String> {
         return DatabaseHelper.executeQuery(
             """
             SELECT DISTINCT driver_id 

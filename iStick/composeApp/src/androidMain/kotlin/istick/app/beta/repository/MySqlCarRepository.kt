@@ -8,6 +8,7 @@ import istick.app.beta.model.MileageVerification
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
 /**
@@ -254,12 +255,14 @@ class MySqlCarRepository : CarRepository {
         }
     }
 
-    // Helper method to get car photos
-    private suspend fun getCarPhotos(carId: String): List<String> {
-        return getCarPhotosFromDatabase(carId)
+    // Helper method to get car photos - use runBlocking to wrap suspend function
+    private fun getCarPhotos(carId: String): List<String> {
+        return runBlocking {
+            getCarPhotosFromDatabase(carId)
+        }
     }
 
-    // Helper method to get car photos with direct database call
+    // Make this a suspend function
     private suspend fun getCarPhotosFromDatabase(carId: String): List<String> {
         return DatabaseHelper.executeQuery(
             "SELECT photo_url FROM car_photos WHERE car_id = ? ORDER BY id",
@@ -273,12 +276,14 @@ class MySqlCarRepository : CarRepository {
         }
     }
 
-    // Helper method to get car verifications
-    private suspend fun getCarVerifications(carId: String): List<MileageVerification> {
-        return getCarVerificationsFromDatabase(carId)
+    // Helper method to get car verifications - use runBlocking to wrap suspend function
+    private fun getCarVerifications(carId: String): List<MileageVerification> {
+        return runBlocking {
+            getCarVerificationsFromDatabase(carId)
+        }
     }
 
-    // Helper method to get car verifications with direct database call
+    // Make this a suspend function
     private suspend fun getCarVerificationsFromDatabase(carId: String): List<MileageVerification> {
         return DatabaseHelper.executeQuery(
             """

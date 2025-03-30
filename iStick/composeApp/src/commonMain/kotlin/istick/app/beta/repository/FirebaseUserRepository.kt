@@ -6,4 +6,3 @@ import istick.app.beta.auth.AuthRepository
 /**
  * Placeholder type alias to map Firebase user repository to MySQL implementation
  */
-typealias FirebaseUserRepository = DefaultUserRepository

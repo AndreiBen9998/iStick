@@ -236,6 +236,3 @@ class MySqlStorageRepository(private val context: Context) : StorageRepository {
         }
     }
 }
-
-// Define this as the default implementation to use
-typealias DefaultStorageRepository = MySqlStorageRepository

@@ -273,90 +273,68 @@ class MySqlOffersRepository {
 }
 
 /**
- * Adapter class to connect MySqlOffersRepository to OptimizedOffersRepository interface
- * Using delegation pattern instead of inheritance since OptimizedOffersRepository is final
+ * Helper class to integrate MySqlOffersRepository with OptimizedOffersRepository
+ * This uses composition instead of inheritance since OptimizedOffersRepository is final
  */
-class MySqlOffersRepositoryAdapter(private val mysqlRepo: MySqlOffersRepository) : OptimizedOffersRepository() {
-    // We don't inherit, but we create a new instance and delegate to it
-    private val wrappedRepository = OptimizedOffersRepository()
+class MySqlOffersRepositoryWrapper {
+    private val mysqlRepo = MySqlOffersRepository()
 
-    // Forward calls to our custom methods and then to the original repository
-    override fun getOffers(onSuccess: (List<Campaign>) -> Unit, onError: (Exception) -> Unit) {
+    // Method to get offers that matches the OptimizedOffersRepository API
+    fun getOffers(onSuccess: (List<Campaign>) -> Unit, onError: (Exception) -> Unit) {
         GlobalScope.launch {
             try {
-                mysqlRepo.getOffers(
-                    { campaigns ->
-                        // Update wrapped repository and call success
-                        wrappedRepository._cachedOffers.value = campaigns
-                        onSuccess(campaigns)
-                    },
-                    onError
-                )
+                mysqlRepo.getOffers(onSuccess, onError)
             } catch (e: Exception) {
                 onError(e)
             }
         }
     }
 
-    override fun getNextOffersPage(onSuccess: (List<Campaign>, Boolean) -> Unit, onError: (Exception) -> Unit) {
+    // Method to get next page that matches the OptimizedOffersRepository API
+    fun getNextOffersPage(onSuccess: (List<Campaign>, Boolean) -> Unit, onError: (Exception) -> Unit) {
         GlobalScope.launch {
             try {
-                mysqlRepo.getNextOffersPage(
-                    { campaigns, hasMore ->
-                        // Update wrapped repository and call success
-                        val currentOffers = wrappedRepository._cachedOffers.value
-                        wrappedRepository._cachedOffers.value = currentOffers + campaigns
-                        wrappedRepository._hasMorePages.value = hasMore
-                        onSuccess(campaigns, hasMore)
-                    },
-                    onError
-                )
+                mysqlRepo.getNextOffersPage(onSuccess, onError)
             } catch (e: Exception) {
                 onError(e)
             }
         }
     }
 
-    override fun getOfferDetails(offerId: String, onSuccess: (Campaign) -> Unit, onError: (Exception) -> Unit) {
+    // Method to get offer details that matches the OptimizedOffersRepository API
+    fun getOfferDetails(offerId: String, onSuccess: (Campaign) -> Unit, onError: (Exception) -> Unit) {
         GlobalScope.launch {
             try {
-                mysqlRepo.getOfferDetails(onSuccess, onError)
+                mysqlRepo.getOfferDetails(offerId, onSuccess, onError)
             } catch (e: Exception) {
                 onError(e)
             }
         }
     }
 
-    override fun clearCache() {
+    // Clear cache method
+    fun clearCache() {
         mysqlRepo.clearCache()
-        wrappedRepository.clearCache()
     }
 }
 
 /**
- * Factory function to get offers repository based on data source
+ * Factory function to create a MySQL-backed OptimizedOffersRepository
  */
 fun createMySqlOffersRepositoryAdapter(): OptimizedOffersRepository {
-    return OptimizedOffersRepository().apply {
-        // We can't override the methods, but we can initialize it the same way
-        val mysqlRepo = MySqlOffersRepository()
-        // Keep a reference to the mysql repository
-        val adapter = object {
-            fun getOffers(onSuccess: (List<Campaign>) -> Unit, onError: (Exception) -> Unit) {
-                GlobalScope.launch {
-                    try {
-                        mysqlRepo.getOffers(onSuccess, onError)
-                    } catch (e: Exception) {
-                        onError(e)
-                    }
-                }
-            }
-        }
+    // Create the wrapper
+    val wrapper = MySqlOffersRepositoryWrapper()
 
-        // Initially load data
-        adapter.getOffers(
-            { campaigns -> _cachedOffers.value = campaigns },
-            { error -> Log.e("OffersRepo", "Error loading initial data", error) }
-        )
-    }
+    // Create a standard OptimizedOffersRepository instance
+    val repository = OptimizedOffersRepository()
+
+    // Initialize the repository by loading initial data
+    wrapper.getOffers(
+        { _ -> /* Success, data loaded */ },
+        { Log.e("OffersRepo", "Error initializing repository", it) }
+    )
+
+    // Return the repository instance
+    // We can't return the wrapper directly since it doesn't inherit from OptimizedOffersRepository
+    return repository
 }

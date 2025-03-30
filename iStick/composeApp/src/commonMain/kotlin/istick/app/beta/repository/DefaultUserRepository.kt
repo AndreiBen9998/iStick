@@ -10,15 +10,3 @@ import istick.app.beta.auth.DefaultAuthRepository
  */
 
 // Default implementation type aliases - to simplify migration from Firebase to MySQL
-typealias DefaultUserRepository = MySqlUserRepository
-typealias DefaultCarRepository = MySqlCarRepository
-typealias DefaultCampaignRepository = MySqlCampaignRepository
-typealias DefaultStorageRepository = istick.app.beta.storage.MySqlStorageRepository
-
-// Firebase repository type aliases - for backward compatibility with existing code
-typealias FirebaseUserRepository = MySqlUserRepository
-typealias FirebaseCarRepository = MySqlCarRepository
-typealias FirebaseCampaignRepository = MySqlCampaignRepository
-typealias FirebaseStorageRepository = istick.app.beta.storage.MySqlStorageRepository
-
-// Remove any duplicate declarations in other files

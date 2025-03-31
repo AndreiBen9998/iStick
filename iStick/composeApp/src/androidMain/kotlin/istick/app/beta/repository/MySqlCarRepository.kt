@@ -257,7 +257,7 @@ class MySqlCarRepository : CarRepository {
 
     // Helper method to get car photos - use runBlocking to wrap suspend function
     private fun getCarPhotos(carId: String): List<String> {
-        return runBlocking(Dispatchers.IO) {
+        return kotlinx.coroutines.runBlocking(Dispatchers.IO) {
             getCarPhotosFromDatabase(carId)
         }
     }
@@ -278,7 +278,7 @@ class MySqlCarRepository : CarRepository {
 
     // Helper method to get car verifications - use runBlocking to wrap suspend function
     private fun getCarVerifications(carId: String): List<MileageVerification> {
-        return runBlocking(Dispatchers.IO) {
+        return kotlinx.coroutines.runBlocking(Dispatchers.IO) {
             getCarVerificationsFromDatabase(carId)
         }
     }

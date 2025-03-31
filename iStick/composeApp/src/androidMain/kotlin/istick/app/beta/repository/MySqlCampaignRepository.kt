@@ -279,7 +279,7 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
 
     // Helper method to get campaign applicants using runBlocking
     private fun getApplicantsForCampaign(campaignId: String): List<String> {
-        return runBlocking(Dispatchers.IO) {
+        return kotlinx.coroutines.runBlocking(Dispatchers.IO) {
             getApplicantsForCampaignSuspend(campaignId)
         }
     }
@@ -300,7 +300,7 @@ class MySqlCampaignRepository(private val authRepository: AuthRepository) : Camp
 
     // Helper method to get approved applicants using runBlocking
     private fun getApprovedApplicantsForCampaign(campaignId: String): List<String> {
-        return runBlocking(Dispatchers.IO) {
+        return kotlinx.coroutines.runBlocking(Dispatchers.IO) {
             getApprovedApplicantsForCampaignSuspend(campaignId)
         }
     }

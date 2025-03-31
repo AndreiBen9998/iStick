@@ -29,7 +29,7 @@ object AppInitializer {
             val networkMonitor = createNetworkMonitor(context)
             val analyticsManager = createAnalyticsManager()
             val ocrProcessor = createOcrProcessor(context)
-            val storageRepository = DefaultStorageRepository(context)
+            val storageRepository = MySqlStorageRepository(context)
 
             // Initialize DI
             DependencyInjection.initPlatformDependencies(

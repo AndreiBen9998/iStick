@@ -278,5 +278,3 @@ class MySqlUserRepository(private val authRepository: AuthRepository) : UserRepo
     }
 }
 
-// Define this as the default implementation to use
-typealias DefaultUserRepository = MySqlUserRepository

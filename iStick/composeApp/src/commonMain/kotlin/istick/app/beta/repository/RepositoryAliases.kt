@@ -2,15 +2,18 @@
 package istick.app.beta.repository
 
 import istick.app.beta.auth.MySqlAuthRepository
+import istick.app.beta.storage.MySqlStorageRepository
 
+// Default implementation type aliases
 typealias DefaultCarRepository = MySqlCarRepository
 typealias DefaultCampaignRepository = MySqlCampaignRepository
-typealias DefaultStorageRepository = istick.app.beta.storage.MySqlStorageRepository
+typealias DefaultUserRepository = MySqlUserRepository
 typealias DefaultAuthRepository = MySqlAuthRepository
+typealias DefaultStorageRepository = MySqlStorageRepository
 
-// Firebase repository type aliases - for backward compatibility with existing code
+// Firebase compatibility aliases
 typealias FirebaseUserRepository = MySqlUserRepository
 typealias FirebaseCarRepository = MySqlCarRepository
 typealias FirebaseCampaignRepository = MySqlCampaignRepository
-typealias FirebaseStorageRepository = istick.app.beta.storage.MySqlStorageRepository
+typealias FirebaseStorageRepository = MySqlStorageRepository
 typealias FirebaseAuthRepository = MySqlAuthRepository

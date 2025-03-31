@@ -18,6 +18,18 @@ import istick.app.beta.storage.StorageRepository
  * This implementation stores images in the local file system and
  * stores references in the database
  */
+
+// Add this function to the MySqlStorageRepository class
+private fun compressImage(imageBytes: ByteArray, quality: Int): ByteArray {
+    // Decode the image
+    val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+
+    // Compress to JPEG with reduced quality
+    val outputStream = ByteArrayOutputStream()
+    bitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
+
+    return outputStream.toByteArray()
+}
 class MySqlStorageRepository(private val context: Context) : StorageRepository {
     private val TAG = "MySqlStorageRepository"
     private val STORAGE_DIR = "app_images"

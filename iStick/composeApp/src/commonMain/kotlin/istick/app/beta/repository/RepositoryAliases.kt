@@ -11,9 +11,9 @@ typealias DefaultUserRepository = MySqlUserRepository
 typealias DefaultAuthRepository = MySqlAuthRepository
 typealias DefaultStorageRepository = MySqlStorageRepository
 
-// Firebase compatibility aliases
-typealias FirebaseUserRepository = MySqlUserRepository
-typealias FirebaseCarRepository = MySqlCarRepository
-typealias FirebaseCampaignRepository = MySqlCampaignRepository
-typealias FirebaseStorageRepository = MySqlStorageRepository
-typealias FirebaseAuthRepository = MySqlAuthRepository
+// No need to declare these again since they're already declared in other files
+// typealias FirebaseUserRepository = MySqlUserRepository
+// typealias FirebaseCarRepository = MySqlCarRepository
+// typealias FirebaseCampaignRepository = MySqlCampaignRepository
+// typealias FirebaseStorageRepository = MySqlStorageRepository
+// typealias FirebaseAuthRepository = MySqlAuthRepository

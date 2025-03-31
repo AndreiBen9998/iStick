@@ -1,3 +1,4 @@
+// File: iStick/composeApp/src/androidMain/kotlin/istick/app/beta/repository/MySqlCarRepository.kt
 package istick.app.beta.repository
 
 import android.util.Log
@@ -9,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import java.sql.Connection
+import java.sql.Date
 
 class MySqlCarRepository : CarRepository {
     private val TAG = "MySqlCarRepository"
@@ -16,197 +18,285 @@ class MySqlCarRepository : CarRepository {
     private val _userCars = MutableStateFlow<List<Car>>(emptyList())
     override val userCars: StateFlow<List<Car>> = _userCars
 
-    // Method to get a database connection
-    private fun getDatabaseConnection(): Connection? {
-        return try {
-            DatabaseHelper.getConnection() // Ensure this is public in DatabaseHelper
-        } catch (e: Exception) {
-            Log.e(TAG, "Error getting database connection: ${e.message}", e)
-            null
-        }
-    }
-
     override suspend fun fetchUserCars(userId: String): Result<List<Car>> = withContext(Dispatchers.IO) {
         try {
-            val connection = getDatabaseConnection() ?: return@withContext Result.failure(Exception("Database connection failed."))
-            val query = "SELECT * FROM cars WHERE user_id = ?"
-            connection.prepareStatement(query).use { statement ->
-                statement.setString(1, userId)
-                statement.executeQuery().use { resultSet ->
-                    val cars = mutableListOf<Car>()
-                    while (resultSet.next()) {
-                        cars.add(
-                            Car(
-                                id = resultSet.getString("id"),
-                                make = resultSet.getString("make"),
-                                model = resultSet.getString("model"),
-                                year = resultSet.getInt("year"),
-                                color = resultSet.getString("color"),
-                                licensePlate = resultSet.getString("license_plate"),
-                                currentMileage = resultSet.getInt("current_mileage"),
-                                photos = getCarPhotosFromDatabase(connection, resultSet.getString("id")),
-                                verification = getCarVerificationsFromDatabase(connection, resultSet.getString("id"))
-                            )
-                        )
-                    }
-                    Result.success(cars)
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error fetching user cars: ${e.message}", e)
-            Result.failure(e)
-        }
-    }
-
-    override suspend fun getCar(carId: String): Result<Car> = withContext(Dispatchers.IO) {
-        try {
-            val connection = getDatabaseConnection() ?: return@withContext Result.failure(Exception("Database connection failed."))
-            val query = "SELECT * FROM cars WHERE id = ?"
-            connection.prepareStatement(query).use { statement ->
-                statement.setString(1, carId)
-                statement.executeQuery().use { resultSet ->
-                    if (resultSet.next()) {
-                        val car = Car(
-                            id = resultSet.getString("id"),
+            val cars = DatabaseHelper.executeQuery(
+                "SELECT * FROM cars WHERE user_id = ?",
+                listOf(userId.toLong())
+            ) { resultSet ->
+                val carsList = mutableListOf<Car>()
+                while (resultSet.next()) {
+                    val carId = resultSet.getString("id")
+                    carsList.add(
+                        Car(
+                            id = carId,
                             make = resultSet.getString("make"),
                             model = resultSet.getString("model"),
                             year = resultSet.getInt("year"),
                             color = resultSet.getString("color"),
                             licensePlate = resultSet.getString("license_plate"),
                             currentMileage = resultSet.getInt("current_mileage"),
-                            photos = getCarPhotosFromDatabase(connection, carId),
-                            verification = getCarVerificationsFromDatabase(connection, carId)
+                            photos = getCarPhotos(carId),
+                            verification = getCarVerifications(carId)
                         )
-                        return@withContext Result.success(car)
-                    } else {
-                        return@withContext Result.failure(Exception("Car with ID $carId not found."))
-                    }
+                    )
+                }
+                carsList
+            }
+
+            // Update state flow
+            _userCars.value = cars
+
+            return@withContext Result.success(cars)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching user cars: ${e.message}", e)
+            return@withContext Result.failure(e)
+        }
+    }
+
+    override suspend fun getCar(carId: String): Result<Car> = withContext(Dispatchers.IO) {
+        try {
+            val car = DatabaseHelper.executeQuery(
+                "SELECT * FROM cars WHERE id = ?",
+                listOf(carId)
+            ) { resultSet ->
+                if (resultSet.next()) {
+                    Car(
+                        id = resultSet.getString("id"),
+                        make = resultSet.getString("make"),
+                        model = resultSet.getString("model"),
+                        year = resultSet.getInt("year"),
+                        color = resultSet.getString("color"),
+                        licensePlate = resultSet.getString("license_plate"),
+                        currentMileage = resultSet.getInt("current_mileage"),
+                        photos = getCarPhotos(carId),
+                        verification = getCarVerifications(carId)
+                    )
+                } else {
+                    null
                 }
             }
+
+            if (car != null) {
+                return@withContext Result.success(car)
+            } else {
+                return@withContext Result.failure(Exception("Car not found"))
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "Error fetching car with ID: $carId | ${e.message}", e)
-            Result.failure(e)
+            Log.e(TAG, "Error getting car: ${e.message}", e)
+            return@withContext Result.failure(e)
         }
     }
 
     override suspend fun addCar(car: Car): Result<Car> = withContext(Dispatchers.IO) {
         try {
-            val connection = getDatabaseConnection() ?: return@withContext Result.failure(Exception("Database connection failed."))
-            val query = "INSERT INTO cars (id, make, model, year, color, license_plate, current_mileage, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-            connection.prepareStatement(query).use { statement ->
-                statement.setString(1, car.id)
-                statement.setString(2, car.make)
-                statement.setString(3, car.model)
-                statement.setInt(4, car.year)
-                statement.setString(5, car.color)
-                statement.setString(6, car.licensePlate)
-                statement.setInt(7, car.currentMileage ?: 0)
-                statement.setString(8, "user_id_placeholder") // Replace with actual user ID
-                statement.executeUpdate()
+            // Get current user ID
+            val userId = "1" // In a real app, get this from AuthRepository
+
+            // Insert car record
+            val carId = DatabaseHelper.executeInsert(
+                """
+                INSERT INTO cars (
+                    make, model, year, color, license_plate, current_mileage, user_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                listOf(
+                    car.make,
+                    car.model,
+                    car.year,
+                    car.color,
+                    car.licensePlate,
+                    car.currentMileage,
+                    userId.toLong()
+                )
+            )
+
+            if (carId > 0) {
+                // Create new car with generated ID
+                val newCar = car.copy(id = carId.toString())
+
+                // Update cache
+                _userCars.value = _userCars.value + newCar
+
+                return@withContext Result.success(newCar)
+            } else {
+                return@withContext Result.failure(Exception("Failed to add car"))
             }
-            Result.success(car)
         } catch (e: Exception) {
             Log.e(TAG, "Error adding car: ${e.message}", e)
-            Result.failure(e)
+            return@withContext Result.failure(e)
         }
     }
 
     override suspend fun updateCar(car: Car): Result<Car> = withContext(Dispatchers.IO) {
         try {
-            val connection = getDatabaseConnection() ?: return@withContext Result.failure(Exception("Database connection failed."))
-            val query =
-                "UPDATE cars SET make = ?, model = ?, year = ?, color = ?, license_plate = ?, current_mileage = ? WHERE id = ?"
-            connection.prepareStatement(query).use { statement ->
-                statement.setString(1, car.make)
-                statement.setString(2, car.model)
-                statement.setInt(3, car.year)
-                statement.setString(4, car.color)
-                statement.setString(5, car.licensePlate)
-                statement.setInt(6, car.currentMileage ?: 0)
-                statement.setString(7, car.id)
-                statement.executeUpdate()
+            // Update car record
+            val rowsUpdated = DatabaseHelper.executeUpdate(
+                """
+                UPDATE cars SET 
+                    make = ?, 
+                    model = ?, 
+                    year = ?, 
+                    color = ?, 
+                    license_plate = ?, 
+                    current_mileage = ?
+                WHERE id = ?
+                """,
+                listOf(
+                    car.make,
+                    car.model,
+                    car.year,
+                    car.color,
+                    car.licensePlate,
+                    car.currentMileage,
+                    car.id
+                )
+            )
+
+            if (rowsUpdated > 0) {
+                // Update cache
+                _userCars.value = _userCars.value.map {
+                    if (it.id == car.id) car else it
+                }
+
+                return@withContext Result.success(car)
+            } else {
+                return@withContext Result.failure(Exception("Failed to update car"))
             }
-            Result.success(car)
         } catch (e: Exception) {
             Log.e(TAG, "Error updating car: ${e.message}", e)
-            Result.failure(e)
+            return@withContext Result.failure(e)
         }
     }
 
     override suspend fun deleteCar(carId: String): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
-            val connection = getDatabaseConnection() ?: return@withContext Result.failure(Exception("Database connection failed."))
-            val query = "DELETE FROM cars WHERE id = ?"
-            connection.prepareStatement(query).use { statement ->
-                statement.setString(1, carId)
-                val rowsDeleted = statement.executeUpdate()
-                if (rowsDeleted > 0) {
-                    Result.success(true)
-                } else {
-                    Result.failure(Exception("Car not found."))
-                }
+            // Delete car record
+            val rowsDeleted = DatabaseHelper.executeUpdate(
+                "DELETE FROM cars WHERE id = ?",
+                listOf(carId)
+            )
+
+            if (rowsDeleted > 0) {
+                // Update cache
+                _userCars.value = _userCars.value.filter { it.id != carId }
+
+                return@withContext Result.success(true)
+            } else {
+                return@withContext Result.failure(Exception("Failed to delete car"))
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error deleting car: ${e.message}", e)
-            Result.failure(e)
+            return@withContext Result.failure(e)
         }
     }
 
-    override suspend fun addMileageVerification(
-        carId: String,
-        verification: MileageVerification
-    ): Result<MileageVerification> = withContext(Dispatchers.IO) {
+    override suspend fun addMileageVerification(carId: String, verification: MileageVerification): Result<MileageVerification> = withContext(Dispatchers.IO) {
         try {
-            val connection = getDatabaseConnection() ?: return@withContext Result.failure(Exception("Database connection failed."))
-            val query = "INSERT INTO car_verifications (id, car_id, mileage, verification_date, verification_notes) VALUES (?, ?, ?, ?, ?)"
-            connection.prepareStatement(query).use { statement ->
-                statement.setString(1, verification.id)
-                statement.setString(2, carId) // Use correct parameter name
-                statement.setInt(3, verification.mileage)
-                statement.setDate(4, java.sql.Date(verification.date.time)) // Correct parameter mapping
-                statement.setString(5, verification.notes ?: "") // Avoid null issues
-                statement.executeUpdate()
+            // Insert verification record
+            val verificationId = DatabaseHelper.executeInsert(
+                """
+                INSERT INTO car_verifications (
+                    car_id, mileage, photo_url, verification_code, 
+                    is_verified, verification_date, verification_notes
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                listOf(
+                    carId,
+                    verification.mileage,
+                    verification.photoUrl,
+                    verification.verificationCode,
+                    verification.isVerified,
+                    Date(verification.date.time),
+                    verification.notes
+                )
+            )
+
+            if (verificationId > 0) {
+                // Create new verification with generated ID
+                val newVerification = verification.copy(
+                    id = verificationId.toString(),
+                    carId = carId
+                )
+
+                // Update car with new verification
+                val car = getCar(carId).getOrNull()
+                if (car != null) {
+                    val updatedCar = car.copy(
+                        verification = car.verification + newVerification,
+                        currentMileage = verification.mileage
+                    )
+
+                    // Update car in database with new mileage
+                    updateCar(updatedCar)
+
+                    // Update userCars cache
+                    _userCars.value = _userCars.value.map {
+                        if (it.id == carId) updatedCar else it
+                    }
+                }
+
+                return@withContext Result.success(newVerification)
+            } else {
+                return@withContext Result.failure(Exception("Failed to add verification"))
             }
-            Result.success(verification)
         } catch (e: Exception) {
             Log.e(TAG, "Error adding mileage verification: ${e.message}", e)
-            Result.failure(e)
+            return@withContext Result.failure(e)
         }
     }
 
-    private fun getCarPhotosFromDatabase(connection: Connection, carId: String): List<String> {
-        val photos = mutableListOf<String>()
-        val query = "SELECT photo_url FROM car_photos WHERE car_id = ?"
-        connection.prepareStatement(query).use { statement ->
-            statement.setString(1, carId)
-            statement.executeQuery().use { resultSet ->
+    // Helper method to get car photos
+    private suspend fun getCarPhotos(carId: String): List<String> {
+        return try {
+            DatabaseHelper.executeQuery(
+                "SELECT photo_url FROM car_photos WHERE car_id = ?",
+                listOf(carId)
+            ) { resultSet ->
+                val photos = mutableListOf<String>()
                 while (resultSet.next()) {
                     photos.add(resultSet.getString("photo_url"))
                 }
+                photos
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting car photos: ${e.message}", e)
+            emptyList()
         }
-        return photos
     }
 
-    private fun getCarVerificationsFromDatabase(connection: Connection, carId: String): List<MileageVerification> {
-        val verifications = mutableListOf<MileageVerification>()
-        val query = "SELECT * FROM car_verifications WHERE car_id = ?"
-        connection.prepareStatement(query).use { statement ->
-            statement.setString(1, carId) // Bind the correct car ID
-            statement.executeQuery().use { resultSet ->
+    // Helper method to get car verifications
+    private suspend fun getCarVerifications(carId: String): List<MileageVerification> {
+        return try {
+            DatabaseHelper.executeQuery(
+                "SELECT * FROM car_verifications WHERE car_id = ?",
+                listOf(carId)
+            ) { resultSet ->
+                val verifications = mutableListOf<MileageVerification>()
                 while (resultSet.next()) {
+                    val verificationId = resultSet.getString("id")
+                    val timestamp = resultSet.getTimestamp("created_at")?.time ?: System.currentTimeMillis()
+                    val verificationDate = resultSet.getDate("verification_date")
+
                     verifications.add(
                         MileageVerification(
-                            id = resultSet.getString("id"),
-                            carId = resultSet.getString("car_id"),
+                            id = verificationId,
+                            carId = carId,
+                            timestamp = timestamp,
                             mileage = resultSet.getInt("mileage"),
-                            date = resultSet.getDate("verification_date"), // Corrected column name
-                            notes = resultSet.getString("verification_notes") // Corrected column name
+                            photoUrl = resultSet.getString("photo_url") ?: "",
+                            verificationCode = resultSet.getString("verification_code") ?: "",
+                            isVerified = resultSet.getBoolean("is_verified"),
+                            date = verificationDate ?: java.util.Date(),
+                            notes = resultSet.getString("verification_notes")
                         )
                     )
                 }
+                verifications
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting car verifications: ${e.message}", e)
+            emptyList()
         }
-        return verifications
     }
 }

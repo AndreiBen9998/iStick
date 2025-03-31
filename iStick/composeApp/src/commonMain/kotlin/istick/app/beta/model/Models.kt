@@ -2,6 +2,23 @@
 package istick.app.beta.model
 
 import kotlinx.serialization.Serializable
+import java.util.Date
+
+/**
+ * Represents a verification of a car's mileage
+ */
+@Serializable
+data class MileageVerification(
+    val id: String = "",
+    val carId: String = "",  // Added for MySqlCarRepository
+    val timestamp: Long = System.currentTimeMillis(),
+    val mileage: Int = 0,
+    val photoUrl: String = "",
+    val verificationCode: String = "",
+    val isVerified: Boolean = false,
+    val date: Date = Date(), // Added for MySqlCarRepository
+    val notes: String? = null // Added for MySqlCarRepository
+)
 
 /**
  * Base user interface containing common properties

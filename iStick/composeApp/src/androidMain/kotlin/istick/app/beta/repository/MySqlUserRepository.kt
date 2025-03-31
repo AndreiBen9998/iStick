@@ -17,20 +17,32 @@ class MySqlUserRepository(private val authRepository: AuthRepository) : UserRepo
     private val TAG = "MySqlUserRepository"
     private val _currentUser = MutableStateFlow<User?>(null)
     override val currentUser: StateFlow<User?> = _currentUser
-    
+
     override suspend fun createUser(email: String, name: String, userType: UserType): Result<User> = withContext(Dispatchers.IO) {
         try {
             val userId = authRepository.getCurrentUserId() ?: return@withContext Result.failure(Exception("User not authenticated"))
-            
+
             // Table differs based on user type
-            val tableName = if (userType == UserType.CAR_OWNER) "users_drivers" else "users_business"
-            
-            // Insert user into appropriate table
-            val result = DatabaseHelper.executeUpdate(
-                "INSERT INTO $tableName (user_id, full_name) VALUES (?, ?)",
-                listOf(userId.toLong(), name)
-            )
-            
+            val result = if (userType == UserType.CAR_OWNER) {
+                // Insert into car owners table
+                DatabaseHelper.executeUpdate(
+                    "INSERT INTO users_drivers (user_id, full_name) VALUES (?, ?)",
+                    listOf(userId.toLong(), name)
+                )
+            } else {
+                // Insert into brands table
+                DatabaseHelper.executeUpdate(
+                    "INSERT INTO users_business (user_id, full_name) VALUES (?, ?)",
+                    listOf(userId.toLong(), name)
+                )
+
+                // Also create company details record
+                DatabaseHelper.executeUpdate(
+                    "INSERT INTO company_details (user_id) VALUES (?)",
+                    listOf(userId.toLong())
+                )
+            }
+
             if (result > 0) {
                 // Query the newly created user
                 val user = getUserByIdAndType(userId, userType)
@@ -48,7 +60,7 @@ class MySqlUserRepository(private val authRepository: AuthRepository) : UserRepo
             return@withContext Result.failure(e)
         }
     }
-    
+
     override suspend fun updateUser(user: User): Result<User> = withContext(Dispatchers.IO) {
         try {
             val result = when (user) {
@@ -60,29 +72,39 @@ class MySqlUserRepository(private val authRepository: AuthRepository) : UserRepo
                         SET full_name = ?, city = ?, daily_driving_distance = ?, profile_picture_url = ?
                         WHERE user_id = ?
                         """,
-                        listOf(user.name, user.city, user.dailyDrivingDistance, user.profilePictureUrl, user.id.toLong())
+                        listOf(
+                            user.name,
+                            user.city,
+                            user.dailyDrivingDistance,
+                            user.profilePictureUrl,
+                            user.id.toLong()
+                        )
                     )
                 }
                 is Brand -> {
                     // Update brand profile
-                    DatabaseHelper.executeUpdate(
+                    val brandResult = DatabaseHelper.executeUpdate(
                         """
                         UPDATE users_business 
                         SET full_name = ?, profile_picture_url = ?
                         WHERE user_id = ?
                         """,
-                        listOf(user.name, user.profilePictureUrl, user.id.toLong())
+                        listOf(
+                            user.name,
+                            user.profilePictureUrl,
+                            user.id.toLong()
+                        )
                     )
-                    
+
                     // Also update company details
-                    DatabaseHelper.executeUpdate(
+                    val companyResult = DatabaseHelper.executeUpdate(
                         """
                         UPDATE company_details 
                         SET company_name = ?, industry = ?, website = ?, description = ?, logo_url = ?
                         WHERE user_id = ?
                         """,
                         listOf(
-                            user.companyDetails.companyName, 
+                            user.companyDetails.companyName,
                             user.companyDetails.industry,
                             user.companyDetails.website,
                             user.companyDetails.description,
@@ -90,16 +112,18 @@ class MySqlUserRepository(private val authRepository: AuthRepository) : UserRepo
                             user.id.toLong()
                         )
                     )
+
+                    brandResult + companyResult
                 }
                 else -> 0
             }
-            
+
             if (result > 0) {
                 // If this is the current user, update the state
                 if (_currentUser.value?.id == user.id) {
                     _currentUser.value = user
                 }
-                
+
                 return@withContext Result.success(user)
             } else {
                 return@withContext Result.failure(Exception("Failed to update user"))
@@ -109,18 +133,18 @@ class MySqlUserRepository(private val authRepository: AuthRepository) : UserRepo
             return@withContext Result.failure(e)
         }
     }
-    
+
     override suspend fun getCurrentUser(): Result<User?> = withContext(Dispatchers.IO) {
         try {
             val userId = authRepository.getCurrentUserId() ?: return@withContext Result.success(null)
-            
+
             // First determine the user type
             val userType = getUserType(userId)
                 ?: return@withContext Result.failure(Exception("User type not found"))
-                
+
             // Now get the full user profile based on type
             val user = getUserByIdAndType(userId, userType)
-            
+
             if (user != null) {
                 _currentUser.value = user
                 return@withContext Result.success(user)
@@ -132,32 +156,32 @@ class MySqlUserRepository(private val authRepository: AuthRepository) : UserRepo
             return@withContext Result.failure(e)
         }
     }
-    
+
     override suspend fun updateUserProfilePicture(userId: String, imageUrl: String): Result<User> = withContext(Dispatchers.IO) {
         try {
             // First determine the user type
             val userType = getUserType(userId)
                 ?: return@withContext Result.failure(Exception("User type not found"))
-                
+
             // Table name based on user type
             val tableName = if (userType == UserType.CAR_OWNER) "users_drivers" else "users_business"
-            
+
             // Update profile picture
             val result = DatabaseHelper.executeUpdate(
                 "UPDATE $tableName SET profile_picture_url = ? WHERE user_id = ?",
                 listOf(imageUrl, userId.toLong())
             )
-            
+
             if (result > 0) {
                 // Get updated user
                 val user = getUserByIdAndType(userId, userType)
-                
+
                 if (user != null) {
                     // Update current user if this is the one
                     if (_currentUser.value?.id == userId) {
                         _currentUser.value = user
                     }
-                    
+
                     return@withContext Result.success(user)
                 } else {
                     return@withContext Result.failure(Exception("Failed to retrieve updated user"))
@@ -170,111 +194,120 @@ class MySqlUserRepository(private val authRepository: AuthRepository) : UserRepo
             return@withContext Result.failure(e)
         }
     }
-    
+
     // Helper method to determine user type
     private suspend fun getUserType(userId: String): UserType? {
-        return DatabaseHelper.executeQuery(
-            """
-            SELECT 
-                CASE 
-                    WHEN EXISTS(SELECT 1 FROM users_drivers WHERE user_id = ?) THEN 'CAR_OWNER'
-                    WHEN EXISTS(SELECT 1 FROM users_business WHERE user_id = ?) THEN 'BRAND'
-                    ELSE NULL
-                END as user_type
-            """,
-            listOf(userId.toLong(), userId.toLong())
-        ) { resultSet ->
-            if (resultSet.next()) {
-                val typeStr = resultSet.getString("user_type")
-                when (typeStr) {
-                    "CAR_OWNER" -> UserType.CAR_OWNER
-                    "BRAND" -> UserType.BRAND
-                    else -> null
+        return try {
+            DatabaseHelper.executeQuery(
+                """
+                SELECT 
+                    CASE 
+                        WHEN EXISTS(SELECT 1 FROM users_drivers WHERE user_id = ?) THEN 'CAR_OWNER'
+                        WHEN EXISTS(SELECT 1 FROM users_business WHERE user_id = ?) THEN 'BRAND'
+                        ELSE NULL
+                    END as user_type
+                """,
+                listOf(userId.toLong(), userId.toLong())
+            ) { resultSet ->
+                if (resultSet.next()) {
+                    val typeStr = resultSet.getString("user_type")
+                    when (typeStr) {
+                        "CAR_OWNER" -> UserType.CAR_OWNER
+                        "BRAND" -> UserType.BRAND
+                        else -> null
+                    }
+                } else {
+                    null
                 }
-            } else {
-                null
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error determining user type: ${e.message}", e)
+            null
         }
     }
-    
+
     // Helper method to get a user by ID and type
     private suspend fun getUserByIdAndType(userId: String, userType: UserType): User? {
-        return when (userType) {
-            UserType.CAR_OWNER -> {
-                // Query car owner details
-                DatabaseHelper.executeQuery(
-                    """
-                    SELECT d.*, u.email, u.created_at, u.last_login_at,
-                           COALESCE(AVG(r.rating), 0) as avg_rating,
-                           COUNT(r.id) as review_count
-                    FROM users_drivers d
-                    JOIN users u ON d.user_id = u.id
-                    LEFT JOIN reviews r ON r.receiver_id = d.user_id
-                    WHERE d.user_id = ?
-                    GROUP BY d.user_id
-                    """,
-                    listOf(userId.toLong())
-                ) { resultSet ->
-                    if (resultSet.next()) {
-                        CarOwner(
-                            id = userId,
-                            email = resultSet.getString("email"),
-                            name = resultSet.getString("full_name"),
-                            profilePictureUrl = resultSet.getString("profile_picture_url"),
-                            createdAt = resultSet.getTimestamp("created_at")?.time ?: System.currentTimeMillis(),
-                            lastLoginAt = resultSet.getTimestamp("last_login_at")?.time ?: System.currentTimeMillis(),
-                            rating = resultSet.getFloat("avg_rating"),
-                            reviewCount = resultSet.getInt("review_count"),
-                            type = UserType.CAR_OWNER,
-                            city = resultSet.getString("city") ?: "",
-                            dailyDrivingDistance = resultSet.getInt("daily_driving_distance")
-                        )
-                    } else {
-                        null
-                    }
-                }
-            }
-            UserType.BRAND -> {
-                // Query brand details
-                DatabaseHelper.executeQuery(
-                    """
-                    SELECT b.*, u.email, u.created_at, u.last_login_at, cd.*,
-                           COALESCE(AVG(r.rating), 0) as avg_rating,
-                           COUNT(r.id) as review_count
-                    FROM users_business b
-                    JOIN users u ON b.user_id = u.id
-                    LEFT JOIN company_details cd ON cd.user_id = b.user_id
-                    LEFT JOIN reviews r ON r.receiver_id = b.user_id
-                    WHERE b.user_id = ?
-                    GROUP BY b.user_id
-                    """,
-                    listOf(userId.toLong())
-                ) { resultSet ->
-                    if (resultSet.next()) {
-                        Brand(
-                            id = userId,
-                            email = resultSet.getString("email"),
-                            name = resultSet.getString("full_name"),
-                            profilePictureUrl = resultSet.getString("profile_picture_url"),
-                            createdAt = resultSet.getTimestamp("created_at")?.time ?: System.currentTimeMillis(),
-                            lastLoginAt = resultSet.getTimestamp("last_login_at")?.time ?: System.currentTimeMillis(),
-                            rating = resultSet.getFloat("avg_rating"),
-                            reviewCount = resultSet.getInt("review_count"),
-                            type = UserType.BRAND,
-                            companyDetails = CompanyDetails(
-                                companyName = resultSet.getString("company_name") ?: "",
-                                industry = resultSet.getString("industry") ?: "",
-                                website = resultSet.getString("website") ?: "",
-                                description = resultSet.getString("description") ?: "",
-                                logoUrl = resultSet.getString("logo_url") ?: ""
+        return try {
+            when (userType) {
+                UserType.CAR_OWNER -> {
+                    // Query car owner details
+                    DatabaseHelper.executeQuery(
+                        """
+                        SELECT d.*, u.email, u.created_at, u.last_login_at,
+                               COALESCE(AVG(r.rating), 0) as avg_rating,
+                               COUNT(r.id) as review_count
+                        FROM users_drivers d
+                        JOIN users u ON d.user_id = u.id
+                        LEFT JOIN reviews r ON r.receiver_id = d.user_id
+                        WHERE d.user_id = ?
+                        GROUP BY d.user_id
+                        """,
+                        listOf(userId.toLong())
+                    ) { resultSet ->
+                        if (resultSet.next()) {
+                            CarOwner(
+                                id = userId,
+                                email = resultSet.getString("email") ?: "",
+                                name = resultSet.getString("full_name") ?: "",
+                                profilePictureUrl = resultSet.getString("profile_picture_url"),
+                                createdAt = resultSet.getTimestamp("created_at")?.time ?: System.currentTimeMillis(),
+                                lastLoginAt = resultSet.getTimestamp("last_login_at")?.time ?: System.currentTimeMillis(),
+                                rating = resultSet.getFloat("avg_rating"),
+                                reviewCount = resultSet.getInt("review_count"),
+                                type = UserType.CAR_OWNER,
+                                city = resultSet.getString("city") ?: "",
+                                dailyDrivingDistance = resultSet.getInt("daily_driving_distance")
                             )
-                        )
-                    } else {
-                        null
+                        } else {
+                            null
+                        }
+                    }
+                }
+                UserType.BRAND -> {
+                    // Query brand details
+                    DatabaseHelper.executeQuery(
+                        """
+                        SELECT b.*, u.email, u.created_at, u.last_login_at, cd.*,
+                               COALESCE(AVG(r.rating), 0) as avg_rating,
+                               COUNT(r.id) as review_count
+                        FROM users_business b
+                        JOIN users u ON b.user_id = u.id
+                        LEFT JOIN company_details cd ON cd.user_id = b.user_id
+                        LEFT JOIN reviews r ON r.receiver_id = b.user_id
+                        WHERE b.user_id = ?
+                        GROUP BY b.user_id
+                        """,
+                        listOf(userId.toLong())
+                    ) { resultSet ->
+                        if (resultSet.next()) {
+                            Brand(
+                                id = userId,
+                                email = resultSet.getString("email") ?: "",
+                                name = resultSet.getString("full_name") ?: "",
+                                profilePictureUrl = resultSet.getString("profile_picture_url"),
+                                createdAt = resultSet.getTimestamp("created_at")?.time ?: System.currentTimeMillis(),
+                                lastLoginAt = resultSet.getTimestamp("last_login_at")?.time ?: System.currentTimeMillis(),
+                                rating = resultSet.getFloat("avg_rating"),
+                                reviewCount = resultSet.getInt("review_count"),
+                                type = UserType.BRAND,
+                                companyDetails = CompanyDetails(
+                                    companyName = resultSet.getString("company_name") ?: "",
+                                    industry = resultSet.getString("industry") ?: "",
+                                    website = resultSet.getString("website") ?: "",
+                                    description = resultSet.getString("description") ?: "",
+                                    logoUrl = resultSet.getString("logo_url") ?: ""
+                                )
+                            )
+                        } else {
+                            null
+                        }
                     }
                 }
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting user by ID and type: ${e.message}", e)
+            null
         }
     }
 }
-

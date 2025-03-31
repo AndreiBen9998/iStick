@@ -19,16 +19,16 @@ import kotlinx.serialization.json.Json
 class MySqlAnalyticsManager : AnalyticsManager {
     private val TAG = "MySqlAnalyticsManager"
     private val scope = CoroutineScope(Dispatchers.IO)
-    
+
     private var userId: String? = null
     private var userType: UserType? = null
     private val userProperties = mutableMapOf<String, String>()
-    
+
     override fun setUserProperties(userId: String, userType: UserType, properties: Map<String, String>) {
         this.userId = userId
         this.userType = userType
         userProperties.putAll(properties)
-        
+
         // Record this information in the database
         scope.launch {
             try {
@@ -39,7 +39,7 @@ class MySqlAnalyticsManager : AnalyticsManager {
                 ) { resultSet ->
                     if (resultSet.next()) resultSet.getInt(1) else 0
                 }
-                
+
                 if (count > 0) {
                     // Update existing record
                     DatabaseHelper.executeUpdate(
@@ -74,7 +74,7 @@ class MySqlAnalyticsManager : AnalyticsManager {
             }
         }
     }
-    
+
     override fun trackScreenView(screenName: String, screenClass: String) {
         logAnalyticsEvent(
             eventType = "screen_view",
@@ -84,7 +84,7 @@ class MySqlAnalyticsManager : AnalyticsManager {
             )
         )
     }
-    
+
     override fun trackRegistration(userType: UserType, method: String) {
         logAnalyticsEvent(
             eventType = "registration",
@@ -94,14 +94,14 @@ class MySqlAnalyticsManager : AnalyticsManager {
             )
         )
     }
-    
+
     override fun trackLogin(method: String) {
         logAnalyticsEvent(
             eventType = "login",
             properties = mapOf("method" to method)
         )
     }
-    
+
     override fun trackCarAdded(car: Car) {
         logAnalyticsEvent(
             eventType = "car_added",
@@ -113,7 +113,7 @@ class MySqlAnalyticsManager : AnalyticsManager {
             )
         )
     }
-    
+
     override fun trackMileageVerification(car: Car, newMileage: Int, verificationMethod: String) {
         logAnalyticsEvent(
             eventType = "mileage_verification",
@@ -127,7 +127,7 @@ class MySqlAnalyticsManager : AnalyticsManager {
             )
         )
     }
-    
+
     override fun trackCampaignView(campaign: Campaign) {
         logAnalyticsEvent(
             eventType = "campaign_view",
@@ -138,7 +138,7 @@ class MySqlAnalyticsManager : AnalyticsManager {
             )
         )
     }
-    
+
     override fun trackCampaignApplication(campaign: Campaign, car: Car) {
         logAnalyticsEvent(
             eventType = "campaign_application",
@@ -151,7 +151,7 @@ class MySqlAnalyticsManager : AnalyticsManager {
             )
         )
     }
-    
+
     override fun trackCampaignCreated(campaign: Campaign) {
         logAnalyticsEvent(
             eventType = "campaign_created",
@@ -164,7 +164,7 @@ class MySqlAnalyticsManager : AnalyticsManager {
             )
         )
     }
-    
+
     override fun trackApplicationReview(campaignId: String, approved: Boolean) {
         logAnalyticsEvent(
             eventType = "application_review",
@@ -174,7 +174,7 @@ class MySqlAnalyticsManager : AnalyticsManager {
             )
         )
     }
-    
+
     override fun trackAdRevenue(campaignId: String, amount: Double, currency: String) {
         logAnalyticsEvent(
             eventType = "ad_revenue",
@@ -185,44 +185,44 @@ class MySqlAnalyticsManager : AnalyticsManager {
             )
         )
     }
-    
+
     override fun trackError(errorType: String, errorMessage: String, screenName: String?) {
         val properties = mutableMapOf(
             "error_type" to errorType,
             "error_message" to errorMessage
         )
-        
+
         if (screenName != null) {
             properties["screen_name"] = screenName
         }
-        
+
         logAnalyticsEvent(
             eventType = "error",
             properties = properties
         )
     }
-    
+
     override fun trackFeatureUsed(featureName: String, parameters: Map<String, Any>) {
         val properties = mutableMapOf<String, String>(
             "feature_name" to featureName
         )
-        
+
         // Convert all parameter values to strings
         parameters.forEach { (key, value) ->
             properties[key] = value.toString()
         }
-        
+
         logAnalyticsEvent(
             eventType = "feature_used",
             properties = properties
         )
     }
-    
+
     // Helper method to log analytics events to the database
     private fun logAnalyticsEvent(eventType: String, properties: Map<String, String>) {
         // Also log to logcat for debugging
         Log.d(TAG, "Analytics event: $eventType, properties: $properties")
-        
+
         scope.launch {
             try {
                 DatabaseHelper.executeInsert(
@@ -232,7 +232,7 @@ class MySqlAnalyticsManager : AnalyticsManager {
                     VALUES (?, ?, ?, NOW())
                     """,
                     listOf(
-                        userId?.toLongOrNull() ?: 0,
+                        userId?.toLongOrNull() ?: 0L,
                         eventType,
                         Json.encodeToString(properties)
                     )

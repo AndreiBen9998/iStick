@@ -39,16 +39,17 @@ class MySqlOffersRepository {
             // Reset pagination
             currentPage = 0
 
-            val sql = """
+            val offers = DatabaseHelper.executeQuery(
+                """
                 SELECT o.*, u.full_name as brand_name 
                 FROM offers o 
                 JOIN users_business u ON o.user_id = u.id 
                 WHERE o.status = 'verified' 
                 ORDER BY o.created_at DESC 
                 LIMIT ?, ?
-            """
-
-            val offers = DatabaseHelper.executeQuery(sql, listOf(currentPage * pageSize, pageSize)) { resultSet ->
+                """,
+                listOf(currentPage * pageSize, pageSize)
+            ) { resultSet ->
                 val offersList = mutableListOf<Campaign>()
                 while (resultSet.next()) {
                     offersList.add(resultSetToCampaign(resultSet))
@@ -64,8 +65,10 @@ class MySqlOffersRepository {
             _cachedOffers.value = offers
 
             // Check if there are more pages
-            val countSql = "SELECT COUNT(*) FROM offers WHERE status = 'verified'"
-            val totalCount = DatabaseHelper.executeQuery(countSql, emptyList()) { resultSet ->
+            val totalCount = DatabaseHelper.executeQuery(
+                "SELECT COUNT(*) FROM offers WHERE status = 'verified'",
+                emptyList()
+            ) { resultSet ->
                 if (resultSet.next()) resultSet.getInt(1) else 0
             }
 
@@ -95,16 +98,17 @@ class MySqlOffersRepository {
                 return@withContext
             }
 
-            val sql = """
+            val newOffers = DatabaseHelper.executeQuery(
+                """
                 SELECT o.*, u.full_name as brand_name 
                 FROM offers o 
                 JOIN users_business u ON o.user_id = u.id 
                 WHERE o.status = 'verified' 
                 ORDER BY o.created_at DESC 
                 LIMIT ?, ?
-            """
-
-            val newOffers = DatabaseHelper.executeQuery(sql, listOf(currentPage * pageSize, pageSize)) { resultSet ->
+                """,
+                listOf(currentPage * pageSize, pageSize)
+            ) { resultSet ->
                 val offersList = mutableListOf<Campaign>()
                 while (resultSet.next()) {
                     offersList.add(resultSetToCampaign(resultSet))
@@ -118,8 +122,10 @@ class MySqlOffersRepository {
             }
 
             // Check if there are more pages
-            val countSql = "SELECT COUNT(*) FROM offers WHERE status = 'verified'"
-            val totalCount = DatabaseHelper.executeQuery(countSql, emptyList()) { resultSet ->
+            val totalCount = DatabaseHelper.executeQuery(
+                "SELECT COUNT(*) FROM offers WHERE status = 'verified'",
+                emptyList()
+            ) { resultSet ->
                 if (resultSet.next()) resultSet.getInt(1) else 0
             }
 
@@ -151,14 +157,15 @@ class MySqlOffersRepository {
                 return@withContext
             }
 
-            val sql = """
+            val offer = DatabaseHelper.executeQuery(
+                """
                 SELECT o.*, u.full_name as brand_name 
                 FROM offers o 
                 JOIN users_business u ON o.user_id = u.id 
                 WHERE o.id = ? AND o.status = 'verified'
-            """
-
-            val offer = DatabaseHelper.executeQuery(sql, listOf(offerId.toLong())) { resultSet ->
+                """,
+                listOf(offerId.toLong())
+            ) { resultSet ->
                 if (resultSet.next()) {
                     resultSetToCampaign(resultSet)
                 } else {
@@ -168,8 +175,10 @@ class MySqlOffersRepository {
 
             if (offer != null) {
                 // Get offer benefits
-                val benefitsSql = "SELECT benefit_text FROM offer_benefits WHERE offer_id = ?"
-                val benefits = DatabaseHelper.executeQuery(benefitsSql, listOf(offerId.toLong())) { resultSet ->
+                val benefits = DatabaseHelper.executeQuery(
+                    "SELECT benefit_text FROM offer_benefits WHERE offer_id = ?",
+                    listOf(offerId.toLong())
+                ) { resultSet ->
                     val benefitsList = mutableListOf<String>()
                     while (resultSet.next()) {
                         benefitsList.add(resultSet.getString("benefit_text"))
@@ -222,48 +231,53 @@ class MySqlOffersRepository {
      * Convert a database ResultSet row to a Campaign object
      */
     private fun resultSetToCampaign(resultSet: java.sql.ResultSet): Campaign {
-        val id = resultSet.getInt("id").toString()
-        val brandId = resultSet.getInt("user_id").toString()
+        val id = resultSet.getLong("id").toString()
+        val brandId = resultSet.getLong("user_id").toString()
         val brandName = resultSet.getString("brand_name")
         val title = resultSet.getString("title")
-        val description = resultSet.getString("description")
+        val description = resultSet.getString("description") ?: ""
         val price = resultSet.getDouble("price")
-        val currency = resultSet.getString("currency")
-        val stickerWidth = resultSet.getDouble("sticker_width")
-        val stickerHeight = resultSet.getDouble("sticker_height")
+        val currency = resultSet.getString("currency") ?: "RON"
+        val stickerWidth = resultSet.getInt("sticker_width")
+        val stickerHeight = resultSet.getInt("sticker_height")
         val stickerPosition = resultSet.getString("sticker_position")
-        val stickerImageUrl = resultSet.getString("sticker_image_url")
-        val createdAt = resultSet.getTimestamp("created_at").time
-        val updatedAt = resultSet.getTimestamp("updated_at").time
+        val stickerImageUrl = resultSet.getString("sticker_image_url") ?: ""
+        val location = resultSet.getString("location") ?: ""
+        val createdAt = resultSet.getTimestamp("created_at")?.time ?: System.currentTimeMillis()
+        val updatedAt = resultSet.getTimestamp("updated_at")?.time ?: System.currentTimeMillis()
 
         // Map sticker position from database to enum
-        val mappedPosition = when (stickerPosition) {
-            "left-door-front" -> StickerPosition.DOOR_LEFT
-            "right-door-front" -> StickerPosition.DOOR_RIGHT
-            "hood" -> StickerPosition.HOOD
-            "trunk" -> StickerPosition.TRUNK
-            "rear-window" -> StickerPosition.REAR_WINDOW
-            else -> StickerPosition.SIDE_PANEL
+        val mappedPosition = try {
+            when (stickerPosition) {
+                "left-door-front" -> StickerPosition.DOOR_LEFT
+                "right-door-front" -> StickerPosition.DOOR_RIGHT
+                "hood" -> StickerPosition.HOOD
+                "trunk" -> StickerPosition.TRUNK
+                "rear-window" -> StickerPosition.REAR_WINDOW
+                else -> StickerPosition.SIDE_PANEL
+            }
+        } catch (e: Exception) {
+            StickerPosition.SIDE_PANEL
         }
 
         return Campaign(
             id = id,
             brandId = brandId,
             title = "$title by $brandName",
-            description = description ?: "",
+            description = description,
             stickerDetails = StickerDetails(
-                imageUrl = stickerImageUrl ?: "",
-                width = stickerWidth.toInt(),
-                height = stickerHeight.toInt(),
+                imageUrl = stickerImageUrl,
+                width = stickerWidth,
+                height = stickerHeight,
                 positions = listOf(mappedPosition)
             ),
             payment = PaymentDetails(
                 amount = price,
-                currency = currency ?: "RON",
+                currency = currency,
                 paymentFrequency = PaymentFrequency.MONTHLY
             ),
             requirements = CampaignRequirements(
-                cities = listOf(resultSet.getString("location") ?: "")
+                cities = listOf(location)
             ),
             status = CampaignStatus.ACTIVE,
             createdAt = createdAt,

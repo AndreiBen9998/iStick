@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Firebase implementation of UserRepository
- * This is a placeholder implementation using MySQL under the hood
+ * This implementation uses MySQL under the hood
  */
 class FirebaseUserRepository(
     private val authRepository: AuthRepository

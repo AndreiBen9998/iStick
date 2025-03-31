@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Firebase implementation of CarRepository
- * This is a placeholder implementation using MySQL under the hood
+ * This implementation uses MySQL under the hood
  */
 class FirebaseCarRepository : CarRepository {
     // Forward to MySQL implementation

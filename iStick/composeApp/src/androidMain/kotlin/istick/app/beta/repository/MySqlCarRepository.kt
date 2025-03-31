@@ -203,14 +203,14 @@ class MySqlCarRepository : CarRepository {
                     is_verified, verification_date, verification_notes
                 ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                listOf(
-                    carId,
+                listOf<Any>(
+                    carId.toLong(),
                     verification.mileage,
                     verification.photoUrl,
                     verification.verificationCode,
                     verification.isVerified,
                     Date(verification.date.time),
-                    verification.notes
+                    verification.notes ?: ""
                 )
             )
 

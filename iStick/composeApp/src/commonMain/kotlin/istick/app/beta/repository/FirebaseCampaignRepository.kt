@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Firebase implementation of CampaignRepository
- * This is a placeholder implementation using MySQL under the hood
+ * This implementation uses MySQL under the hood
  */
 class FirebaseCampaignRepository(private val authRepository: AuthRepository) : CampaignRepository {
     // Forward to MySQL implementation

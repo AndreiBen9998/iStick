@@ -12,9 +12,10 @@ typealias DefaultUserRepository = MySqlUserRepository
 typealias DefaultAuthRepository = MySqlAuthRepository
 typealias DefaultStorageRepository = MySqlStorageRepository
 
-// Firebase implementation aliases
-typealias FirebaseUserRepository = MySqlUserRepository
-typealias FirebaseCarRepository = MySqlCarRepository
-typealias FirebaseCampaignRepository = MySqlCampaignRepository
-typealias FirebaseStorageRepository = MySqlStorageRepository
-typealias FirebaseAuthRepository = MySqlAuthRepository
+// Remove Firebase aliases to avoid conflicts with the actual classes
+// DO NOT include these lines:
+// typealias FirebaseUserRepository = MySqlUserRepository
+// typealias FirebaseCarRepository = MySqlCarRepository
+// typealias FirebaseCampaignRepository = MySqlCampaignRepository
+// typealias FirebaseStorageRepository = MySqlStorageRepository
+// typealias FirebaseAuthRepository = MySqlAuthRepository

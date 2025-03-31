@@ -1,4 +1,5 @@
 // File: iStick/composeApp/src/androidMain/kotlin/istick/app/beta/repository/MySqlUserRepository.kt
+
 package istick.app.beta.repository
 
 import android.util.Log
@@ -27,19 +28,19 @@ class MySqlUserRepository(private val authRepository: AuthRepository) : UserRepo
                 // Insert into car owners table
                 DatabaseHelper.executeUpdate(
                     "INSERT INTO users_drivers (user_id, full_name) VALUES (?, ?)",
-                    listOf(userId.toLong(), name)
+                    listOf<Any>(userId.toLong(), name)
                 )
             } else {
                 // Insert into brands table
                 DatabaseHelper.executeUpdate(
                     "INSERT INTO users_business (user_id, full_name) VALUES (?, ?)",
-                    listOf(userId.toLong(), name)
+                    listOf<Any>(userId.toLong(), name)
                 )
 
                 // Also create company details record
                 DatabaseHelper.executeUpdate(
                     "INSERT INTO company_details (user_id) VALUES (?)",
-                    listOf(userId.toLong())
+                    listOf<Any>(userId.toLong())
                 )
             }
 
@@ -72,11 +73,11 @@ class MySqlUserRepository(private val authRepository: AuthRepository) : UserRepo
                         SET full_name = ?, city = ?, daily_driving_distance = ?, profile_picture_url = ?
                         WHERE user_id = ?
                         """,
-                        listOf(
+                        listOf<Any>(
                             user.name,
                             user.city,
                             user.dailyDrivingDistance,
-                            user.profilePictureUrl,
+                            user.profilePictureUrl ?: "",
                             user.id.toLong()
                         )
                     )
@@ -89,9 +90,9 @@ class MySqlUserRepository(private val authRepository: AuthRepository) : UserRepo
                         SET full_name = ?, profile_picture_url = ?
                         WHERE user_id = ?
                         """,
-                        listOf(
+                        listOf<Any>(
                             user.name,
-                            user.profilePictureUrl,
+                            user.profilePictureUrl ?: "",
                             user.id.toLong()
                         )
                     )
@@ -103,7 +104,7 @@ class MySqlUserRepository(private val authRepository: AuthRepository) : UserRepo
                         SET company_name = ?, industry = ?, website = ?, description = ?, logo_url = ?
                         WHERE user_id = ?
                         """,
-                        listOf(
+                        listOf<Any>(
                             user.companyDetails.companyName,
                             user.companyDetails.industry,
                             user.companyDetails.website,
@@ -169,7 +170,7 @@ class MySqlUserRepository(private val authRepository: AuthRepository) : UserRepo
             // Update profile picture
             val result = DatabaseHelper.executeUpdate(
                 "UPDATE $tableName SET profile_picture_url = ? WHERE user_id = ?",
-                listOf(imageUrl, userId.toLong())
+                listOf<Any>(imageUrl, userId.toLong())
             )
 
             if (result > 0) {
@@ -207,7 +208,7 @@ class MySqlUserRepository(private val authRepository: AuthRepository) : UserRepo
                         ELSE NULL
                     END as user_type
                 """,
-                listOf(userId.toLong(), userId.toLong())
+                listOf<Any>(userId.toLong(), userId.toLong())
             ) { resultSet ->
                 if (resultSet.next()) {
                     val typeStr = resultSet.getString("user_type")
@@ -243,7 +244,7 @@ class MySqlUserRepository(private val authRepository: AuthRepository) : UserRepo
                         WHERE d.user_id = ?
                         GROUP BY d.user_id
                         """,
-                        listOf(userId.toLong())
+                        listOf<Any>(userId.toLong())
                     ) { resultSet ->
                         if (resultSet.next()) {
                             CarOwner(
@@ -278,7 +279,7 @@ class MySqlUserRepository(private val authRepository: AuthRepository) : UserRepo
                         WHERE b.user_id = ?
                         GROUP BY b.user_id
                         """,
-                        listOf(userId.toLong())
+                        listOf<Any>(userId.toLong())
                     ) { resultSet ->
                         if (resultSet.next()) {
                             Brand(

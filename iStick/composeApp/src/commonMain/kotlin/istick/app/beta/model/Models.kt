@@ -1,23 +1,22 @@
 // File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/model/Models.kt
+
 package istick.app.beta.model
 
 import kotlinx.serialization.Serializable
-import java.util.Date
+import kotlinx.serialization.Contextual
 
-/**
- * Represents a verification of a car's mileage
- */
 @Serializable
 data class MileageVerification(
     val id: String = "",
-    val carId: String = "",  // Added for MySqlCarRepository
+    val carId: String = "",
     val timestamp: Long = System.currentTimeMillis(),
     val mileage: Int = 0,
     val photoUrl: String = "",
     val verificationCode: String = "",
     val isVerified: Boolean = false,
-    val date: Date = Date(), // Added for MySqlCarRepository
-    val notes: String? = null // Added for MySqlCarRepository
+    @Contextual
+    val date: java.util.Date = java.util.Date(),
+    val notes: String? = null
 )
 
 /**
@@ -99,19 +98,6 @@ data class Car(
     val photos: List<String> = emptyList(),
     val currentMileage: Int = 0,
     val verification: List<MileageVerification> = emptyList()
-)
-
-/**
- * Represents a verification of a car's mileage
- */
-@Serializable
-data class MileageVerification(
-    val id: String = "",
-    val timestamp: Long = System.currentTimeMillis(),
-    val mileage: Int = 0,
-    val photoUrl: String = "",
-    val verificationCode: String = "",
-    val isVerified: Boolean = false
 )
 
 /**

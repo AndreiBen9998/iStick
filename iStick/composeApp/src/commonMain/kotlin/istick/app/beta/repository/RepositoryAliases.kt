@@ -1,4 +1,5 @@
 // File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/repository/RepositoryAliases.kt
+
 package istick.app.beta.repository
 
 import istick.app.beta.auth.MySqlAuthRepository
@@ -11,9 +12,9 @@ typealias DefaultUserRepository = MySqlUserRepository
 typealias DefaultAuthRepository = MySqlAuthRepository
 typealias DefaultStorageRepository = MySqlStorageRepository
 
-// No need to declare these again since they're already declared in other files
-// typealias FirebaseUserRepository = MySqlUserRepository
-// typealias FirebaseCarRepository = MySqlCarRepository
-// typealias FirebaseCampaignRepository = MySqlCampaignRepository
-// typealias FirebaseStorageRepository = MySqlStorageRepository
-// typealias FirebaseAuthRepository = MySqlAuthRepository
+// Firebase implementation aliases
+typealias FirebaseUserRepository = MySqlUserRepository
+typealias FirebaseCarRepository = MySqlCarRepository
+typealias FirebaseCampaignRepository = MySqlCampaignRepository
+typealias FirebaseStorageRepository = MySqlStorageRepository
+typealias FirebaseAuthRepository = MySqlAuthRepository

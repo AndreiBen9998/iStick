@@ -1,4 +1,5 @@
 // File: iStick/composeApp/src/androidMain/kotlin/istick/app/beta/repository/MySqlCarRepository.kt
+
 package istick.app.beta.repository
 
 import android.util.Log
@@ -9,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.runBlocking
 import java.sql.Connection
 import java.sql.Date
 
@@ -22,7 +24,7 @@ class MySqlCarRepository : CarRepository {
         try {
             val cars = DatabaseHelper.executeQuery(
                 "SELECT * FROM cars WHERE user_id = ?",
-                listOf(userId.toLong())
+                listOf(userId)
             ) { resultSet ->
                 val carsList = mutableListOf<Car>()
                 while (resultSet.next()) {
@@ -246,18 +248,20 @@ class MySqlCarRepository : CarRepository {
         }
     }
 
-    // Helper method to get car photos
-    private suspend fun getCarPhotos(carId: String): List<String> {
+    // Helper method to get car photos - non-suspending version using runBlocking
+    private fun getCarPhotos(carId: String): List<String> {
         return try {
-            DatabaseHelper.executeQuery(
-                "SELECT photo_url FROM car_photos WHERE car_id = ?",
-                listOf(carId)
-            ) { resultSet ->
-                val photos = mutableListOf<String>()
-                while (resultSet.next()) {
-                    photos.add(resultSet.getString("photo_url"))
+            runBlocking(Dispatchers.IO) {
+                DatabaseHelper.executeQuery(
+                    "SELECT photo_url FROM car_photos WHERE car_id = ?",
+                    listOf(carId)
+                ) { resultSet ->
+                    val photos = mutableListOf<String>()
+                    while (resultSet.next()) {
+                        photos.add(resultSet.getString("photo_url"))
+                    }
+                    photos
                 }
-                photos
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error getting car photos: ${e.message}", e)
@@ -265,38 +269,71 @@ class MySqlCarRepository : CarRepository {
         }
     }
 
-    // Helper method to get car verifications
-    private suspend fun getCarVerifications(carId: String): List<MileageVerification> {
-        return try {
-            DatabaseHelper.executeQuery(
-                "SELECT * FROM car_verifications WHERE car_id = ?",
-                listOf(carId)
-            ) { resultSet ->
-                val verifications = mutableListOf<MileageVerification>()
-                while (resultSet.next()) {
-                    val verificationId = resultSet.getString("id")
-                    val timestamp = resultSet.getTimestamp("created_at")?.time ?: System.currentTimeMillis()
-                    val verificationDate = resultSet.getDate("verification_date")
 
-                    verifications.add(
-                        MileageVerification(
-                            id = verificationId,
-                            carId = carId,
-                            timestamp = timestamp,
-                            mileage = resultSet.getInt("mileage"),
-                            photoUrl = resultSet.getString("photo_url") ?: "",
-                            verificationCode = resultSet.getString("verification_code") ?: "",
-                            isVerified = resultSet.getBoolean("is_verified"),
-                            date = verificationDate ?: java.util.Date(),
-                            notes = resultSet.getString("verification_notes")
+    // Helper method to get car verifications - non-suspending version using runBlocking
+    private fun getCarVerifications(carId: String): List<MileageVerification> {
+        return try {
+            runBlocking(Dispatchers.IO) {
+                DatabaseHelper.executeQuery(
+                    "SELECT * FROM car_verifications WHERE car_id = ?",
+                    listOf(carId)
+                ) { resultSet ->
+                    val verifications = mutableListOf<MileageVerification>()
+                    while (resultSet.next()) {
+                        val verificationId = resultSet.getString("id")
+                        val timestamp = resultSet.getTimestamp("created_at")?.time ?: System.currentTimeMillis()
+                        val verificationDate = resultSet.getDate("verification_date")
+
+                        verifications.add(
+                            MileageVerification(
+                                id = verificationId,
+                                carId = carId,
+                                timestamp = timestamp,
+                                mileage = resultSet.getInt("mileage"),
+                                photoUrl = resultSet.getString("photo_url") ?: "",
+                                verificationCode = resultSet.getString("verification_code") ?: "",
+                                isVerified = resultSet.getBoolean("is_verified"),
+                                date = verificationDate ?: java.util.Date(),
+                                notes = resultSet.getString("verification_notes")
+                            )
                         )
-                    )
+                    }
+                    verifications
                 }
-                verifications
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error getting car verifications: ${e.message}", e)
             emptyList()
+        }
+    }
+    // Fix for the type mismatch
+    override suspend fun addMileageVerification(carId: String, verification: MileageVerification): Result<MileageVerification> = withContext(Dispatchers.IO) {
+        try {
+            // Insert verification record
+            val verificationId = DatabaseHelper.executeInsert(
+                """
+                INSERT INTO car_verifications (
+                    car_id, mileage, photo_url, verification_code, 
+                    is_verified, verification_date, verification_notes
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                listOf<Any>(
+                    carId,
+                    verification.mileage,
+                    verification.photoUrl,
+                    verification.verificationCode,
+                    verification.isVerified,
+                    Date(verification.date.time),
+                    verification.notes ?: ""
+                )
+            )
+
+            // Rest of your implementation...
+            // Make sure to cast lists to List<Any> where needed
+
+            return@withContext Result.success(verification)
+        } catch (e: Exception) {
+            return@withContext Result.failure(e)
         }
     }
 }

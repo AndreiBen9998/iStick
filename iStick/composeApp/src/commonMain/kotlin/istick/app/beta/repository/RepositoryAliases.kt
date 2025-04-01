@@ -7,7 +7,6 @@ import istick.app.beta.auth.MySqlAuthRepository
 // Default implementation aliases
 typealias DefaultCarRepository = MySqlCarRepository
 typealias DefaultCampaignRepository = MySqlCampaignRepository
-typealias DefaultUserRepository = MySqlUserRepository
 
 // Create clear separations for the Firebase repositories
 // These are specific adapters that wrap the MySQL implementations

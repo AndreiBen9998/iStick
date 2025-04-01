@@ -11,12 +11,12 @@ import java.util.concurrent.ConcurrentHashMap
  */
 object DatabaseHelper {
     private const val TAG = "DatabaseHelper"
-    private const val DB_URL = "jdbc:mysql://localhost:3306/istick_db"
-    private const val DB_USER = "istick_user"
-    private const val DB_PASSWORD = "istick_password"
+    private const val DB_URL = "jdbc:mysql://localhost:3306/eyestick_db"
+    private const val DB_USER = "root"
+    private const val DB_PASSWORD = ""
 
     // Connection pool for reusing connections
-    private val connectionPool = ConcurrentHashMap<Thread, Connection?>()
+    private val connectionPool = ConcurrentHashMap<Thread, Connection>()
 
     /**
      * Initialize the database connection
@@ -34,69 +34,15 @@ object DatabaseHelper {
      * Get a database connection from the pool or create a new one
      */
     private fun getConnection(): Connection {
-        return connectionPool.getOrPut(Thread.currentThread()) {
+        val connection = connectionPool.getOrPut(Thread.currentThread()) {
             try {
-                DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD).also {
-                    Log.d(TAG, "New connection created for thread ${Thread.currentThread().name}")
-                }
+                DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD)
             } catch (e: SQLException) {
-                Log.e(TAG, "Error creating new connection", e)
-                throw RuntimeException("Unable to create a new connection", e)
-            }
-        } ?: throw IllegalStateException("Failed to retrieve database connection")
-    }
-
-    /**
-     * Return a connection to the pool
-     */
-    private fun returnConnection(connection: Connection?) {
-        if (connection != null) {
-            connectionPool[Thread.currentThread()] = connection
-        }
-    }
-
-    /**
-     * Close all connections when the application is shutting down
-     */
-    fun closeAllConnections() {
-        connectionPool.values.forEach { connection ->
-            try {
-                connection?.close()
-            } catch (e: SQLException) {
-                Log.e(TAG, "Error closing connection", e)
+                Log.e(TAG, "Error creating connection", e)
+                null
             }
         }
-        connectionPool.clear()
-    }
-
-    /**
-     * Test the database connection
-     */
-    fun testConnection() {
-        try {
-            val connection = getConnection()
-            Log.d(TAG, "Database connection successful: $connection")
-            returnConnection(connection) // Return connection to pool after use
-        } catch (e: Exception) {
-            Log.e(TAG, "Database connection test failed", e)
-        }
-    }
-}
-
-
-/**
-     * Get a database connection from the pool or create a new one
-     */
-    private fun getConnection(): Connection {
-        val currentThread = Thread.currentThread()
-        var connection = connectionPool[currentThread]
-
-        if (connection == null || connection.isClosed) {
-            connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD)
-            connectionPool[currentThread] = connection
-        }
-
-        return connection
+        return connection ?: throw IllegalStateException("Failed to retrieve database connection")
     }
 
     /**
@@ -105,6 +51,9 @@ object DatabaseHelper {
     private fun returnConnection(connection: Connection?) {
         // We don't actually close the connection, just return it to the pool
         // In a production app, we would use a proper connection pool library
+        if (connection != null && !connection.isClosed) {
+            connectionPool[Thread.currentThread()] = connection
+        }
     }
 
     /**
@@ -121,6 +70,21 @@ object DatabaseHelper {
             }
         }
         connectionPool.clear()
+        Log.d(TAG, "All database connections closed")
+    }
+
+    /**
+     * Test the database connection
+     */
+    fun testConnection() {
+        try {
+            val connection = getConnection()
+            Log.d(TAG, "Database connection successful: $connection")
+            returnConnection(connection) // Return connection to pool after use
+        } catch (e: Exception) {
+            Log.e(TAG, "Database connection test failed", e)
+            throw e
+        }
     }
 
     /**

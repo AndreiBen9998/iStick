@@ -26,9 +26,7 @@ interface UserRepository {
 /**
  * Firebase implementation of the user repository
  */
-class FirebaseUserRepository(
-    private val authRepository: AuthRepository
-) : UserRepository {
+class DefaultUserRepository(private val authRepository: AuthRepository) : UserRepository {
     private val _currentUser = MutableStateFlow<User?>(null)
     override val currentUser: StateFlow<User?> = _currentUser
 

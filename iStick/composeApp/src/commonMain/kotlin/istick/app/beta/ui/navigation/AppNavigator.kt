@@ -1,4 +1,3 @@
-// File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/ui/navigation/AppNavigator.kt
 package istick.app.beta.ui.navigation
 
 import istick.app.beta.auth.AuthRepository

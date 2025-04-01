@@ -1,4 +1,3 @@
-// File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/AppInitializer.kt
 package istick.app.beta
 
 import android.content.Context
@@ -8,6 +7,8 @@ import istick.app.beta.di.DependencyInjection
 import istick.app.beta.network.createNetworkMonitor
 import istick.app.beta.ocr.createOcrProcessor
 import istick.app.beta.utils.PerformanceMonitor
+import istick.app.beta.storage.MySqlStorageRepository
+
 
 /**
  * Initialize the application with required components

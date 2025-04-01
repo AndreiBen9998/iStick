@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.runBlocking
-import java.sql.Connection
 import java.sql.Date
 
 class MySqlCarRepository : CarRepository {
@@ -24,11 +23,11 @@ class MySqlCarRepository : CarRepository {
         try {
             val cars = DatabaseHelper.executeQuery(
                 "SELECT * FROM cars WHERE user_id = ?",
-                listOf(userId)
+                listOf(userId.toLong())
             ) { resultSet ->
                 val carsList = mutableListOf<Car>()
                 while (resultSet.next()) {
-                    val carId = resultSet.getString("id")
+                    val carId = resultSet.getLong("id").toString()
                     carsList.add(
                         Car(
                             id = carId,
@@ -60,11 +59,11 @@ class MySqlCarRepository : CarRepository {
         try {
             val car = DatabaseHelper.executeQuery(
                 "SELECT * FROM cars WHERE id = ?",
-                listOf(carId)
+                listOf(carId.toLong())
             ) { resultSet ->
                 if (resultSet.next()) {
                     Car(
-                        id = resultSet.getString("id"),
+                        id = carId,
                         make = resultSet.getString("make"),
                         model = resultSet.getString("model"),
                         year = resultSet.getInt("year"),
@@ -102,7 +101,7 @@ class MySqlCarRepository : CarRepository {
                     make, model, year, color, license_plate, current_mileage, user_id
                 ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                listOf(
+                listOf<Any>(
                     car.make,
                     car.model,
                     car.year,
@@ -144,14 +143,14 @@ class MySqlCarRepository : CarRepository {
                     current_mileage = ?
                 WHERE id = ?
                 """,
-                listOf(
+                listOf<Any>(
                     car.make,
                     car.model,
                     car.year,
                     car.color,
                     car.licensePlate,
                     car.currentMileage,
-                    car.id
+                    car.id.toLong()
                 )
             )
 
@@ -176,7 +175,7 @@ class MySqlCarRepository : CarRepository {
             // Delete car record
             val rowsDeleted = DatabaseHelper.executeUpdate(
                 "DELETE FROM cars WHERE id = ?",
-                listOf(carId)
+                listOf<Any>(carId.toLong())
             )
 
             if (rowsDeleted > 0) {
@@ -248,13 +247,13 @@ class MySqlCarRepository : CarRepository {
         }
     }
 
-    // Helper method to get car photos - non-suspending version using runBlocking
+    // Helper method to get car photos
     private fun getCarPhotos(carId: String): List<String> {
         return try {
             runBlocking(Dispatchers.IO) {
                 DatabaseHelper.executeQuery(
                     "SELECT photo_url FROM car_photos WHERE car_id = ?",
-                    listOf(carId)
+                    listOf<Any>(carId.toLong())
                 ) { resultSet ->
                     val photos = mutableListOf<String>()
                     while (resultSet.next()) {
@@ -269,18 +268,17 @@ class MySqlCarRepository : CarRepository {
         }
     }
 
-
-    // Helper method to get car verifications - non-suspending version using runBlocking
+    // Helper method to get car verifications
     private fun getCarVerifications(carId: String): List<MileageVerification> {
         return try {
             runBlocking(Dispatchers.IO) {
                 DatabaseHelper.executeQuery(
                     "SELECT * FROM car_verifications WHERE car_id = ?",
-                    listOf(carId)
+                    listOf<Any>(carId.toLong())
                 ) { resultSet ->
                     val verifications = mutableListOf<MileageVerification>()
                     while (resultSet.next()) {
-                        val verificationId = resultSet.getString("id")
+                        val verificationId = resultSet.getLong("id").toString()
                         val timestamp = resultSet.getTimestamp("created_at")?.time ?: System.currentTimeMillis()
                         val verificationDate = resultSet.getDate("verification_date")
 
@@ -304,36 +302,6 @@ class MySqlCarRepository : CarRepository {
         } catch (e: Exception) {
             Log.e(TAG, "Error getting car verifications: ${e.message}", e)
             emptyList()
-        }
-    }
-    // Fix for the type mismatch
-    override suspend fun addMileageVerification(carId: String, verification: MileageVerification): Result<MileageVerification> = withContext(Dispatchers.IO) {
-        try {
-            // Insert verification record
-            val verificationId = DatabaseHelper.executeInsert(
-                """
-                INSERT INTO car_verifications (
-                    car_id, mileage, photo_url, verification_code, 
-                    is_verified, verification_date, verification_notes
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                listOf<Any>(
-                    carId,
-                    verification.mileage,
-                    verification.photoUrl,
-                    verification.verificationCode,
-                    verification.isVerified,
-                    Date(verification.date.time),
-                    verification.notes ?: ""
-                )
-            )
-
-            // Rest of your implementation...
-            // Make sure to cast lists to List<Any> where needed
-
-            return@withContext Result.success(verification)
-        } catch (e: Exception) {
-            return@withContext Result.failure(e)
         }
     }
 }

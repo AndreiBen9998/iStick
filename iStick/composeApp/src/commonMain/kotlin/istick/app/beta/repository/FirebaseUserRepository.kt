@@ -1,39 +1,17 @@
-// File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/repository/FirebaseUserRepository.kt
 package istick.app.beta.repository
 
-import istick.app.beta.auth.AuthRepository
-import istick.app.beta.model.Brand
-import istick.app.beta.model.CarOwner
-import istick.app.beta.model.User
-import istick.app.beta.model.UserType
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+// Firebase User Repository for managing user data in Firebase
+object FirebaseUserRepository {
 
-/**
- * Firebase implementation of UserRepository
- * This implementation uses MySQL under the hood
- */
-class FirebaseUserRepository(
-    private val authRepository: AuthRepository
-) : UserRepository {
-    // Forward to MySQL implementation
-    private val mysqlRepo = MySqlUserRepository(authRepository)
-
-    override val currentUser: StateFlow<User?> = mysqlRepo.currentUser
-
-    override suspend fun createUser(email: String, name: String, userType: UserType): Result<User> {
-        return mysqlRepo.createUser(email, name, userType)
+    // Example function: retrieve user data
+    fun getUserData(userId: String): String {
+        // Mock implementation (replace with real Firebase logic)
+        return "User data for $userId"
     }
 
-    override suspend fun updateUser(user: User): Result<User> {
-        return mysqlRepo.updateUser(user)
-    }
-
-    override suspend fun getCurrentUser(): Result<User?> {
-        return mysqlRepo.getCurrentUser()
-    }
-
-    override suspend fun updateUserProfilePicture(userId: String, imageUrl: String): Result<User> {
-        return mysqlRepo.updateUserProfilePicture(userId, imageUrl)
+    // Example function: create a new user
+    fun createUser(email: String, password: String): Boolean {
+        // Mock implementation (replace with real Firebase logic)
+        return email.isNotEmpty() && password.length >= 6
     }
 }

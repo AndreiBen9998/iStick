@@ -7,6 +7,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
 import istick.app.beta.database.DatabaseHelper
+import istick.app.beta.storage.StorageRepository
+import istick.app.beta.storage.compressImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.runBlocking
@@ -44,7 +46,7 @@ class MySqlStorageRepository(private val context: Context) : StorageRepository {
             // Create record in database
             val imageId = DatabaseHelper.executeInsert(
                 "INSERT INTO images (filename, file_path, created_at) VALUES (?, ?, NOW())",
-                listOf(fileName, imageFile.absolutePath)
+                listOf<Any>(fileName, imageFile.absolutePath)
             )
 
             if (imageId > 0) {
@@ -57,7 +59,7 @@ class MySqlStorageRepository(private val context: Context) : StorageRepository {
                     // Associate with user
                     DatabaseHelper.executeUpdate(
                         "INSERT INTO user_images (user_id, image_id) VALUES (?, ?)",
-                        listOf(userId.toLong(), imageId)
+                        listOf<Any>(userId.toLong(), imageId)
                     )
                 }
 
@@ -81,7 +83,7 @@ class MySqlStorageRepository(private val context: Context) : StorageRepository {
             // Look up in database
             val imageUrl = DatabaseHelper.executeQuery(
                 "SELECT filename FROM images WHERE file_path = ?",
-                listOf(path)
+                listOf<Any>(path)
             ) { resultSet ->
                 if (resultSet.next()) {
                     "local://${resultSet.getString("filename")}"
@@ -111,7 +113,7 @@ class MySqlStorageRepository(private val context: Context) : StorageRepository {
                 WHERE ui.user_id = ?
                 ORDER BY i.created_at DESC
                 """,
-                listOf(userId.toLong())
+                listOf<Any>(userId.toLong())
             ) { resultSet ->
                 val imageUrls = mutableListOf<String>()
                 while (resultSet.next()) {
@@ -140,7 +142,7 @@ class MySqlStorageRepository(private val context: Context) : StorageRepository {
             // Find image in database
             val imageRecord = DatabaseHelper.executeQuery(
                 "SELECT id, file_path FROM images WHERE filename = ?",
-                listOf(filename)
+                listOf<Any>(filename)
             ) { resultSet ->
                 if (resultSet.next()) {
                     Pair(
@@ -158,13 +160,13 @@ class MySqlStorageRepository(private val context: Context) : StorageRepository {
                 // Delete from user_images
                 DatabaseHelper.executeUpdate(
                     "DELETE FROM user_images WHERE image_id = ?",
-                    listOf(imageId)
+                    listOf<Any>(imageId)
                 )
 
                 // Delete from images table
                 DatabaseHelper.executeUpdate(
                     "DELETE FROM images WHERE id = ?",
-                    listOf(imageId)
+                    listOf<Any>(imageId)
                 )
 
                 // Delete file from disk
@@ -199,7 +201,7 @@ class MySqlStorageRepository(private val context: Context) : StorageRepository {
             val filePath = runBlocking {
                 DatabaseHelper.executeQuery(
                     "SELECT file_path FROM images WHERE filename = ?",
-                    listOf(filename)
+                    listOf<Any>(filename)
                 ) { resultSet ->
                     if (resultSet.next()) resultSet.getString("file_path") else null
                 }

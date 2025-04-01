@@ -3,6 +3,8 @@ package istick.app.beta.storage
 
 import istick.app.beta.model.User
 import android.content.Context
+import istick.app.beta.storage.MySqlStorageRepository
+
 
 /**
  * Firebase implementation of StorageRepository

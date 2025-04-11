@@ -42,4 +42,34 @@ class FirebaseCampaignRepository(private val authRepository: AuthRepository) : C
     override suspend fun updateCampaignStatus(campaignId: String, status: CampaignStatus): Result<Campaign> {
         return mysqlRepo.updateCampaignStatus(campaignId, status)
     }
+
+    // Add the missing method implementation
+    override suspend fun createCampaign(campaign: Campaign): Result<Campaign> {
+        return mysqlRepo.createCampaign(campaign)
+    }
+
+    // Add implementations for all other required methods
+    override suspend fun updateCampaign(campaign: Campaign): Result<Campaign> {
+        return mysqlRepo.updateCampaign(campaign)
+    }
+
+    override suspend fun deleteCampaign(campaignId: String): Result<Boolean> {
+        return mysqlRepo.deleteCampaign(campaignId)
+    }
+
+    override suspend fun fetchBrandCampaigns(brandId: String): Result<List<Campaign>> {
+        return mysqlRepo.fetchBrandCampaigns(brandId)
+    }
+
+    override suspend fun fetchCampaignApplications(campaignId: String): Result<List<CampaignApplication>> {
+        return mysqlRepo.fetchCampaignApplications(campaignId)
+    }
+
+    override suspend fun approveApplication(applicationId: String): Result<CampaignApplication> {
+        return mysqlRepo.approveApplication(applicationId)
+    }
+
+    override suspend fun rejectApplication(applicationId: String): Result<CampaignApplication> {
+        return mysqlRepo.rejectApplication(applicationId)
+    }
 }

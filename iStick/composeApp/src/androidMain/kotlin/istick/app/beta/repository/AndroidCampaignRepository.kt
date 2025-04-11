@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-
 class AndroidCampaignRepository(
     private val campaignDao: CampaignDao
 ) : CampaignRepository {
@@ -105,6 +104,43 @@ class AndroidCampaignRepository(
         return Result.failure(Exception("Not implemented"))
     }
 
+    // Adding the missing method implementation
+    override suspend fun createCampaign(campaign: Campaign): Result<Campaign> {
+        // Implementation here
+        return Result.failure(Exception("Not implemented"))
+    }
+
+    // Implementing other required methods from the interface
+    override suspend fun updateCampaign(campaign: Campaign): Result<Campaign> {
+        // Implementation here
+        return Result.failure(Exception("Not implemented"))
+    }
+
+    override suspend fun deleteCampaign(campaignId: String): Result<Boolean> {
+        // Implementation here
+        return Result.failure(Exception("Not implemented"))
+    }
+
+    override suspend fun fetchBrandCampaigns(brandId: String): Result<List<Campaign>> {
+        // Implementation here
+        return Result.failure(Exception("Not implemented"))
+    }
+
+    override suspend fun fetchCampaignApplications(campaignId: String): Result<List<CampaignApplication>> {
+        // Implementation here
+        return Result.failure(Exception("Not implemented"))
+    }
+
+    override suspend fun approveApplication(applicationId: String): Result<CampaignApplication> {
+        // Implementation here
+        return Result.failure(Exception("Not implemented"))
+    }
+
+    override suspend fun rejectApplication(applicationId: String): Result<CampaignApplication> {
+        // Implementation here
+        return Result.failure(Exception("Not implemented"))
+    }
+
     // Helper method to create mock campaigns
     private fun createMockCampaigns(): List<Campaign> {
         return listOf(
@@ -130,8 +166,4 @@ class AndroidCampaignRepository(
             )
         )
     }
-}
-override suspend fun createCampaign(campaign: Campaign): Result<Campaign> {
-    // Implementation - for now just return a failure since this is a mock
-    return Result.failure(Exception("Not implemented"))
 }

@@ -35,10 +35,6 @@ import kotlinx.coroutines.launch
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.BorderStroke
 
-override suspend fun createCampaign(campaign: Campaign): Result<Campaign> {
-    return mysqlRepo.createCampaign(campaign)
-}
-
 @Composable
 fun CampaignCreationScreen(
     viewModel: CampaignCreationViewModel,

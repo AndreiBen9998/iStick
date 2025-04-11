@@ -82,10 +82,14 @@ class CampaignCreationViewModel(
 
     // Initialize with default values
     init {
-        _stickerWidth = MutableStateFlow(20)
-        _stickerHeight = MutableStateFlow(10)
-        _minDailyDistance = MutableStateFlow(20)
-        _stickerPositions.value = listOf(StickerPosition.DOOR_LEFT)
+        // Use update methods instead of direct reassignment
+        updateStickerWidth(20)
+        updateStickerHeight(10)
+        updateMinDailyDistance(20)
+
+        // For _stickerPositions, we need a different approach
+        val initialPositions = listOf(StickerPosition.DOOR_LEFT)
+        _stickerPositions.value = initialPositions
     }
 
     // Step 1: Basic Information Methods

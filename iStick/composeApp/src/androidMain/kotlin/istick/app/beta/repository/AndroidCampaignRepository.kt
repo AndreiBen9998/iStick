@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+
 class AndroidCampaignRepository(
     private val campaignDao: CampaignDao
 ) : CampaignRepository {
@@ -129,4 +130,8 @@ class AndroidCampaignRepository(
             )
         )
     }
+}
+override suspend fun createCampaign(campaign: Campaign): Result<Campaign> {
+    // Implementation - for now just return a failure since this is a mock
+    return Result.failure(Exception("Not implemented"))
 }

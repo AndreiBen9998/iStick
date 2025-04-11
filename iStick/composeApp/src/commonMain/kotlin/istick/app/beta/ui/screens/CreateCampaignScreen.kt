@@ -32,6 +32,12 @@ import istick.app.beta.utils.PerformanceMonitor
 import istick.app.beta.viewmodel.CampaignCreationViewModel
 import istick.app.beta.camera.rememberCameraLauncher
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.BorderStroke
+
+override suspend fun createCampaign(campaign: Campaign): Result<Campaign> {
+    return mysqlRepo.createCampaign(campaign)
+}
 
 @Composable
 fun CampaignCreationScreen(

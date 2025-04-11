@@ -22,4 +22,13 @@ interface CampaignRepository {
     suspend fun fetchUserApplications(userId: String): Result<List<CampaignApplication>>
     suspend fun applyCampaign(campaignId: String, carId: String): Result<CampaignApplication>
     suspend fun updateCampaignStatus(campaignId: String, status: CampaignStatus): Result<Campaign>
+
+    // New methods for campaign management
+    suspend fun createCampaign(campaign: Campaign): Result<Campaign>
+    suspend fun updateCampaign(campaign: Campaign): Result<Campaign>
+    suspend fun deleteCampaign(campaignId: String): Result<Boolean>
+    suspend fun fetchBrandCampaigns(brandId: String): Result<List<Campaign>>
+    suspend fun fetchCampaignApplications(campaignId: String): Result<List<CampaignApplication>>
+    suspend fun approveApplication(applicationId: String): Result<CampaignApplication>
+    suspend fun rejectApplication(applicationId: String): Result<CampaignApplication>
 }

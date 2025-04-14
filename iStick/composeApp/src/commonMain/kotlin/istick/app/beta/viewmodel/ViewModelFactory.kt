@@ -101,4 +101,16 @@ object ViewModelFactory {
             userRepository = userRepository
         )
     }
+    /**
+     * Create a PaymentViewModel instance
+     */
+    fun createPaymentViewModel(
+        authRepository: AuthRepository,
+        paymentService: PaymentService
+    ): PaymentViewModel {
+        return PaymentViewModel(
+            paymentService = paymentService,
+            authRepository = authRepository
+        )
+    }
 }

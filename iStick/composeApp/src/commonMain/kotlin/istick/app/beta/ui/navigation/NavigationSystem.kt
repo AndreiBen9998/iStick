@@ -222,6 +222,32 @@ fun NavigationSystem(
             if (navigationError != null) {
                 Text(navigationError ?: "", color = Color.Red)
             }
+            // Payment screen
+            AnimatedVisibility(
+                visible = currentScreen is Screen.Payment,
+                enter = fadeIn(animationSpec = tween(300)) + slideInHorizontally(),
+                exit = fadeOut(animationSpec = tween(300)) + slideOutHorizontally()
+            ) {
+                val paymentScreen = currentScreen as? Screen.Payment
+                if (paymentScreen != null) {
+                    val viewModel = remember { appNavigator.createPaymentViewModel() }
+
+                    PaymentScreen(
+                        viewModel = viewModel,
+                        performanceMonitor = appNavigator.performanceMonitor,
+                        campaignId = paymentScreen.campaignId,
+                        carOwnerId = paymentScreen.carOwnerId,
+                        onPaymentComplete = {
+                            // Navigate back to home or campaign details
+                            currentScreen = Screen.Home
+                        },
+                        onBack = {
+                            // Go back to previous screen
+                            currentScreen = Screen.Home
+                        }
+                    )
+                }
+            }
         }
     }
 }

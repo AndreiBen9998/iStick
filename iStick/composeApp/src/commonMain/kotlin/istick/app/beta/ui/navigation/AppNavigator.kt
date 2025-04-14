@@ -59,6 +59,17 @@ class AppNavigator(
         data class ManageApplications(val campaignId: String) : Screen()
 
         object CampaignAnalytics : Screen()
+        data class Payment(val campaignId: String, val carOwnerId: String) : Screen()
+
+        /**
+         * Create payment view model
+         */
+        fun createPaymentViewModel(): PaymentViewModel {
+            return PaymentViewModel(
+                paymentService = DependencyInjection.getPaymentService(),
+                authRepository = authRepository
+            )
+        }
     }
 
     fun createMileageVerificationViewModel(): MileageVerificationViewModel {

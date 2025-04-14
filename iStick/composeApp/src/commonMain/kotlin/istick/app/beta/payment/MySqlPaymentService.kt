@@ -3,29 +3,29 @@ package istick.app.beta.payment
 
 import android.util.Log
 import istick.app.beta.database.DatabaseHelper
+import istick.app.beta.database.DatabaseTransactionHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
-import java.sql.SQLException
 
 /**
  * MySQL implementation of PaymentService
  */
 class MySqlPaymentService : PaymentService {
     private val TAG = "MySqlPaymentService"
-    
+
     private val _paymentMethods = MutableStateFlow<List<PaymentMethod>>(emptyList())
     override val paymentMethods: StateFlow<List<PaymentMethod>> = _paymentMethods
-    
+
     private val _pendingPayments = MutableStateFlow<List<PaymentTransaction>>(emptyList())
     override val pendingPayments: StateFlow<List<PaymentTransaction>> = _pendingPayments
-    
+
     private val _completedPayments = MutableStateFlow<List<PaymentTransaction>>(emptyList())
     override val completedPayments: StateFlow<List<PaymentTransaction>> = _completedPayments
-    
+
     // Map to store payment status observers
     private val paymentStatusFlows = mutableMapOf<String, MutableStateFlow<PaymentStatus>>()
 
@@ -53,7 +53,7 @@ class MySqlPaymentService : PaymentService {
                 }
                 methodsList
             }
-            
+
             _paymentMethods.value = methods
             Result.success(methods)
         } catch (e: Exception) {
@@ -63,19 +63,19 @@ class MySqlPaymentService : PaymentService {
     }
 
     override suspend fun addPaymentMethod(userId: String, paymentMethod: PaymentMethod): Result<PaymentMethod> = withContext(Dispatchers.IO) {
-        val connection = DatabaseHelper.beginTransaction()
+        val connection = DatabaseTransactionHelper.beginTransaction()
         try {
             // If this is the first payment method for the user, make it default
-            val isFirstMethod = DatabaseHelper.executeQueryWithConnection(
+            val isFirstMethod = DatabaseTransactionHelper.executeQueryWithConnection(
                 connection,
                 "SELECT COUNT(*) FROM payment_methods WHERE user_id = ?",
                 listOf(userId.toLong())
             ) { rs ->
                 if (rs.next()) rs.getInt(1) == 0 else true
             }
-            
+
             // Insert the payment method
-            val methodId = DatabaseHelper.executeInsertWithConnection(
+            val methodId = DatabaseTransactionHelper.executeInsertWithConnection(
                 connection,
                 """
                 INSERT INTO payment_methods (
@@ -90,10 +90,10 @@ class MySqlPaymentService : PaymentService {
                     isFirstMethod || paymentMethod.isDefault
                 )
             )
-            
+
             // If this is set as default, update other methods to non-default
             if (paymentMethod.isDefault || isFirstMethod) {
-                DatabaseHelper.executeUpdateWithConnection(
+                DatabaseTransactionHelper.executeUpdateWithConnection(
                     connection,
                     """
                     UPDATE payment_methods 
@@ -103,59 +103,59 @@ class MySqlPaymentService : PaymentService {
                     listOf(userId.toLong(), methodId)
                 )
             }
-            
-            DatabaseHelper.commitTransaction(connection)
-            
+
+            DatabaseTransactionHelper.commitTransaction(connection)
+
             // Create the new payment method with generated ID
             val newMethod = paymentMethod.copy(
                 id = methodId.toString(),
                 isDefault = isFirstMethod || paymentMethod.isDefault
             )
-            
+
             // Update state
             _paymentMethods.value = _paymentMethods.value + newMethod
-            
+
             Result.success(newMethod)
         } catch (e: Exception) {
-            DatabaseHelper.rollbackTransaction(connection)
+            DatabaseTransactionHelper.rollbackTransaction(connection)
             Log.e(TAG, "Error adding payment method: ${e.message}", e)
             Result.failure(e)
         } finally {
-            DatabaseHelper.closeConnection(connection)
+            DatabaseTransactionHelper.closeConnection(connection)
         }
     }
 
     override suspend fun removePaymentMethod(userId: String, paymentMethodId: String): Result<Boolean> = withContext(Dispatchers.IO) {
-        val connection = DatabaseHelper.beginTransaction()
+        val connection = DatabaseTransactionHelper.beginTransaction()
         try {
             // Check if method exists and belongs to user
-            val exists = DatabaseHelper.executeQueryWithConnection(
+            val exists = DatabaseTransactionHelper.executeQueryWithConnection(
                 connection,
                 "SELECT id FROM payment_methods WHERE id = ? AND user_id = ?",
                 listOf(paymentMethodId.toLong(), userId.toLong())
             ) { rs -> rs.next() }
-            
+
             if (!exists) {
                 return@withContext Result.failure(Exception("Payment method not found or doesn't belong to user"))
             }
-            
+
             // Check if it's the default method
-            val isDefault = DatabaseHelper.executeQueryWithConnection(
+            val isDefault = DatabaseTransactionHelper.executeQueryWithConnection(
                 connection,
                 "SELECT is_default FROM payment_methods WHERE id = ?",
                 listOf(paymentMethodId.toLong())
             ) { rs -> if (rs.next()) rs.getBoolean("is_default") else false }
-            
+
             // Delete the payment method
-            DatabaseHelper.executeUpdateWithConnection(
+            DatabaseTransactionHelper.executeUpdateWithConnection(
                 connection,
                 "DELETE FROM payment_methods WHERE id = ?",
                 listOf(paymentMethodId.toLong())
             )
-            
+
             // If it was the default method, set a new default
             if (isDefault) {
-                DatabaseHelper.executeUpdateWithConnection(
+                DatabaseTransactionHelper.executeUpdateWithConnection(
                     connection,
                     """
                     UPDATE payment_methods
@@ -167,74 +167,74 @@ class MySqlPaymentService : PaymentService {
                     listOf(userId.toLong())
                 )
             }
-            
-            DatabaseHelper.commitTransaction(connection)
-            
+
+            DatabaseTransactionHelper.commitTransaction(connection)
+
             // Update state
             _paymentMethods.value = _paymentMethods.value.filter { it.id != paymentMethodId }
-            
+
             Result.success(true)
         } catch (e: Exception) {
-            DatabaseHelper.rollbackTransaction(connection)
+            DatabaseTransactionHelper.rollbackTransaction(connection)
             Log.e(TAG, "Error removing payment method: ${e.message}", e)
             Result.failure(e)
         } finally {
-            DatabaseHelper.closeConnection(connection)
+            DatabaseTransactionHelper.closeConnection(connection)
         }
     }
 
     override suspend fun setDefaultPaymentMethod(userId: String, paymentMethodId: String): Result<Boolean> = withContext(Dispatchers.IO) {
-        val connection = DatabaseHelper.beginTransaction()
+        val connection = DatabaseTransactionHelper.beginTransaction()
         try {
             // Check if method exists and belongs to user
-            val exists = DatabaseHelper.executeQueryWithConnection(
+            val exists = DatabaseTransactionHelper.executeQueryWithConnection(
                 connection,
                 "SELECT id FROM payment_methods WHERE id = ? AND user_id = ?",
                 listOf(paymentMethodId.toLong(), userId.toLong())
             ) { rs -> rs.next() }
-            
+
             if (!exists) {
                 return@withContext Result.failure(Exception("Payment method not found or doesn't belong to user"))
             }
-            
+
             // Set all methods to non-default
-            DatabaseHelper.executeUpdateWithConnection(
+            DatabaseTransactionHelper.executeUpdateWithConnection(
                 connection,
                 "UPDATE payment_methods SET is_default = FALSE WHERE user_id = ?",
                 listOf(userId.toLong())
             )
-            
+
             // Set the selected method as default
-            DatabaseHelper.executeUpdateWithConnection(
+            DatabaseTransactionHelper.executeUpdateWithConnection(
                 connection,
                 "UPDATE payment_methods SET is_default = TRUE WHERE id = ?",
                 listOf(paymentMethodId.toLong())
             )
-            
-            DatabaseHelper.commitTransaction(connection)
-            
+
+            DatabaseTransactionHelper.commitTransaction(connection)
+
             // Update state
-            _paymentMethods.value = _paymentMethods.value.map { 
+            _paymentMethods.value = _paymentMethods.value.map {
                 it.copy(isDefault = it.id == paymentMethodId)
             }
-            
+
             Result.success(true)
         } catch (e: Exception) {
-            DatabaseHelper.rollbackTransaction(connection)
+            DatabaseTransactionHelper.rollbackTransaction(connection)
             Log.e(TAG, "Error setting default payment method: ${e.message}", e)
             Result.failure(e)
         } finally {
-            DatabaseHelper.closeConnection(connection)
+            DatabaseTransactionHelper.closeConnection(connection)
         }
     }
 
     override suspend fun processPayment(payment: PaymentTransaction): Result<PaymentTransaction> = withContext(Dispatchers.IO) {
-        val connection = DatabaseHelper.beginTransaction()
+        val connection = DatabaseTransactionHelper.beginTransaction()
         try {
             // Insert payment record with PROCESSING status
             val processingPayment = payment.copy(status = PaymentStatus.PROCESSING)
-            
-            val paymentId = DatabaseHelper.executeInsertWithConnection(
+
+            val paymentId = DatabaseTransactionHelper.executeInsertWithConnection(
                 connection,
                 """
                 INSERT INTO payments (
@@ -253,12 +253,12 @@ class MySqlPaymentService : PaymentService {
                     processingPayment.notes
                 )
             )
-            
+
             // In a real implementation, there would be integration with a payment gateway here
             // For now, we'll simulate payment processing and mark it as completed
-            
+
             // Update payment status to COMPLETED
-            DatabaseHelper.executeUpdateWithConnection(
+            DatabaseTransactionHelper.executeUpdateWithConnection(
                 connection,
                 """
                 UPDATE payments
@@ -267,9 +267,9 @@ class MySqlPaymentService : PaymentService {
                 """,
                 listOf(PaymentStatus.COMPLETED.name, paymentId)
             )
-            
-            DatabaseHelper.commitTransaction(connection)
-            
+
+            DatabaseTransactionHelper.commitTransaction(connection)
+
             // Create completed payment object
             val completedPayment = payment.copy(
                 id = paymentId.toString(),
@@ -277,20 +277,20 @@ class MySqlPaymentService : PaymentService {
                 createdAt = System.currentTimeMillis(),
                 updatedAt = System.currentTimeMillis()
             )
-            
+
             // Update payment status flow if observed
             paymentStatusFlows[paymentId.toString()]?.value = PaymentStatus.COMPLETED
-            
+
             // Update state
             _completedPayments.value = _completedPayments.value + completedPayment
-            
+
             Result.success(completedPayment)
         } catch (e: Exception) {
-            DatabaseHelper.rollbackTransaction(connection)
+            DatabaseTransactionHelper.rollbackTransaction(connection)
             Log.e(TAG, "Error processing payment: ${e.message}", e)
             Result.failure(e)
         } finally {
-            DatabaseHelper.closeConnection(connection)
+            DatabaseTransactionHelper.closeConnection(connection)
         }
     }
 
@@ -312,18 +312,18 @@ class MySqlPaymentService : PaymentService {
                 }
                 paymentsList
             }
-            
+
             // Update state flows
-            val pendingPayments = payments.filter { 
+            val pendingPayments = payments.filter {
                 it.status == PaymentStatus.PENDING || it.status == PaymentStatus.PROCESSING
             }
             val completedPayments = payments.filter {
                 it.status == PaymentStatus.COMPLETED || it.status == PaymentStatus.REFUNDED
             }
-            
+
             _pendingPayments.value = pendingPayments
             _completedPayments.value = completedPayments
-            
+
             Result.success(payments)
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching payment history: ${e.message}", e)
@@ -349,7 +349,7 @@ class MySqlPaymentService : PaymentService {
                 }
                 paymentsList
             }
-            
+
             Result.success(payments)
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching campaign payments: ${e.message}", e)
@@ -374,7 +374,7 @@ class MySqlPaymentService : PaymentService {
                     null
                 }
             }
-            
+
             if (payment != null) {
                 Result.success(payment)
             } else {
@@ -387,10 +387,10 @@ class MySqlPaymentService : PaymentService {
     }
 
     override suspend fun requestRefund(paymentId: String, reason: String): Result<PaymentTransaction> = withContext(Dispatchers.IO) {
-        val connection = DatabaseHelper.beginTransaction()
+        val connection = DatabaseTransactionHelper.beginTransaction()
         try {
             // Check if payment exists and is completed
-            val payment = DatabaseHelper.executeQueryWithConnection(
+            val payment = DatabaseTransactionHelper.executeQueryWithConnection(
                 connection,
                 """
                 SELECT p.*, pm.method_type, pm.title, pm.last_four
@@ -406,13 +406,13 @@ class MySqlPaymentService : PaymentService {
                     null
                 }
             }
-            
+
             if (payment == null) {
                 return@withContext Result.failure(Exception("Payment not found or not eligible for refund"))
             }
-            
+
             // Update payment status to REFUNDED
-            DatabaseHelper.executeUpdateWithConnection(
+            DatabaseTransactionHelper.executeUpdateWithConnection(
                 connection,
                 """
                 UPDATE payments
@@ -421,31 +421,31 @@ class MySqlPaymentService : PaymentService {
                 """,
                 listOf(PaymentStatus.REFUNDED.name, reason, paymentId.toLong())
             )
-            
-            DatabaseHelper.commitTransaction(connection)
-            
+
+            DatabaseTransactionHelper.commitTransaction(connection)
+
             // Create refunded payment object
             val refundedPayment = payment.copy(
                 status = PaymentStatus.REFUNDED,
                 notes = payment.notes + "\nRefund reason: $reason",
                 updatedAt = System.currentTimeMillis()
             )
-            
+
             // Update payment status flow if observed
             paymentStatusFlows[paymentId]?.value = PaymentStatus.REFUNDED
-            
+
             // Update state
-            _completedPayments.value = _completedPayments.value.map { 
+            _completedPayments.value = _completedPayments.value.map {
                 if (it.id == paymentId) refundedPayment else it
             }
-            
+
             Result.success(refundedPayment)
         } catch (e: Exception) {
-            DatabaseHelper.rollbackTransaction(connection)
+            DatabaseTransactionHelper.rollbackTransaction(connection)
             Log.e(TAG, "Error requesting refund: ${e.message}", e)
             Result.failure(e)
         } finally {
-            DatabaseHelper.closeConnection(connection)
+            DatabaseTransactionHelper.closeConnection(connection)
         }
     }
 
@@ -473,7 +473,7 @@ class MySqlPaymentService : PaymentService {
             }
         }
     }
-    
+
     /**
      * Helper method to convert ResultSet to PaymentTransaction
      */
@@ -488,13 +488,13 @@ class MySqlPaymentService : PaymentService {
         val createdAt = resultSet.getTimestamp("created_at")?.time ?: System.currentTimeMillis()
         val updatedAt = resultSet.getTimestamp("updated_at")?.time ?: System.currentTimeMillis()
         val notes = resultSet.getString("notes") ?: ""
-        
+
         // Payment method details
         val paymentMethodId = resultSet.getLong("payment_method_id")
         val methodType = resultSet.getString("method_type")
         val methodTitle = resultSet.getString("title")
         val lastFour = resultSet.getString("last_four")
-        
+
         val paymentMethod = if (methodType != null && methodTitle != null) {
             PaymentMethod(
                 id = paymentMethodId.toString(),
@@ -506,7 +506,7 @@ class MySqlPaymentService : PaymentService {
         } else {
             null
         }
-        
+
         return PaymentTransaction(
             id = paymentId,
             campaignId = campaignId,

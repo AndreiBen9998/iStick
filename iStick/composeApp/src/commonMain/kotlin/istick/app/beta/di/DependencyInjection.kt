@@ -160,4 +160,23 @@ object DependencyInjection {
    fun getCarRepository(): CarRepository = _carRepository
 
    fun getCampaignRepository(): CampaignRepository = _campaignRepository
+
+    private val _paymentService: PaymentService by lazy {
+        PaymentServiceFactory.createPaymentService()
+    }
+
+    /**
+     * Get the payment service
+     */
+    fun getPaymentService(): PaymentService = _paymentService
+
+    /**
+     * Create a payment view model
+     */
+    fun createPaymentViewModel(): PaymentViewModel {
+        return ViewModelFactory.createPaymentViewModel(
+            authRepository = getAuthRepository(),
+            paymentService = getPaymentService()
+        )
+    }
 }

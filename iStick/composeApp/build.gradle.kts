@@ -43,7 +43,7 @@ kotlin {
             implementation(compose.components.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.runtime.compose)
-
+            implementation("androidx.compose.material:material-icons-extended:1.6.0")
 
 
             // Coroutines

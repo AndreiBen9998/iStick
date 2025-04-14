@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import istick.app.beta.ui.navigation.AppNavigator.Screen
 import istick.app.beta.ui.screens.*
 import istick.app.beta.utils.PerformanceMonitor
+import istick.app.beta.viewmodel.PaymentViewModel
 import istick.app.beta.viewmodel.ProfileViewModel
 
 /**
@@ -233,7 +234,7 @@ fun NavigationSystem(
                     val viewModel = remember { appNavigator.createPaymentViewModel() }
 
                     PaymentScreen(
-                        viewModel = viewModel,
+                        viewModel = PaymentViewModel,
                         performanceMonitor = appNavigator.performanceMonitor,
                         campaignId = paymentScreen.campaignId,
                         carOwnerId = paymentScreen.carOwnerId,

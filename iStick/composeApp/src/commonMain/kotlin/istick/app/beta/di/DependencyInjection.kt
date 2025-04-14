@@ -8,7 +8,11 @@ import istick.app.beta.utils.PerformanceMonitor
 import istick.app.beta.network.NetworkMonitor
 import istick.app.beta.analytics.AnalyticsManager
 import istick.app.beta.ocr.OcrProcessor
+import istick.app.beta.payment.PaymentService
+import istick.app.beta.payment.PaymentServiceFactory
 import istick.app.beta.ui.navigation.AppNavigator
+import istick.app.beta.viewmodel.PaymentViewModel
+import istick.app.beta.viewmodel.ViewModelFactory
 
 /**
  * Service locator pattern for dependency injection

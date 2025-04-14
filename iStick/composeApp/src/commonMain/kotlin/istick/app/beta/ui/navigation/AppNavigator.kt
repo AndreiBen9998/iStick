@@ -67,7 +67,7 @@ class AppNavigator(
         fun createPaymentViewModel(): PaymentViewModel {
             return PaymentViewModel(
                 paymentService = DependencyInjection.getPaymentService(),
-                authRepository = authRepository
+                authRepository = AuthRepository
             )
         }
     }

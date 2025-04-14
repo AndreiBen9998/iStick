@@ -6,6 +6,7 @@ import istick.app.beta.repository.UserRepository
 import istick.app.beta.repository.CampaignRepository
 import istick.app.beta.repository.CarRepository
 import istick.app.beta.auth.AuthRepository
+import istick.app.beta.payment.PaymentService
 import istick.app.beta.storage.StorageRepository
 import istick.app.beta.utils.PerformanceMonitor
 

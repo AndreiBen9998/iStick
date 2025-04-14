@@ -33,7 +33,11 @@ fun MainScreen(
         // Use the navigation system
         NavigationSystem(
             appNavigator = appNavigator,
-            onLogout = onLogout
+            onLogout = onLogout,
+            onNavigateToAnalytics = {
+                // Update the navigation state to show the Analytics screen
+                // This would typically update a state variable in the parent component
+            }
         )
     }
 

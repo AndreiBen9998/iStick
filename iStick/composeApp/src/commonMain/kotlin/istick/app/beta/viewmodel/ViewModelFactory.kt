@@ -89,4 +89,16 @@ object ViewModelFactory {
             userRepository = userRepository
         )
     }
+    /**
+     * Create a CampaignAnalyticsViewModel instance
+     */
+    fun createCampaignAnalyticsViewModel(
+        campaignRepository: CampaignRepository,
+        userRepository: UserRepository
+    ): CampaignAnalyticsViewModel {
+        return CampaignAnalyticsViewModel(
+            campaignRepository = campaignRepository,
+            userRepository = userRepository
+        )
+    }
 }

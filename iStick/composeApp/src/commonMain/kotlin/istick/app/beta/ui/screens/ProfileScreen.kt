@@ -27,6 +27,7 @@ fun ProfileScreen(
     viewModel: ProfileViewModel,
     performanceMonitor: PerformanceMonitor,
     onLogout: () -> Unit,
+    onNavigateToAnalytics: () -> Unit = {},  // Add this parameter
     modifier: Modifier = Modifier
 ) {
     // Start performance trace
@@ -108,7 +109,10 @@ fun ProfileScreen(
                 user?.let { currentUser ->
                     when (currentUser) {
                         is CarOwner -> CarOwnerDetails(carOwner = currentUser, cars = cars)
-                        is Brand -> BrandDetails(brand = currentUser)
+                        is Brand -> BrandDetails(
+                            brand = currentUser,
+                            onNavigateToAnalytics = onNavigateToAnalytics
+                        )
                         else -> {
                             // Fallback for unknown user type
                             Text(
@@ -342,6 +346,7 @@ private fun CarOwnerDetails(
 @Composable
 private fun BrandDetails(
     brand: Brand,
+    onNavigateToAnalytics: () -> Unit = {},  // Add this parameter
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -422,6 +427,24 @@ private fun BrandDetails(
             color = Color.White,
             fontWeight = FontWeight.Bold
         )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = onNavigateToAnalytics,  // Use the provided callback
+            colors = ButtonDefaults.buttonColors(
+                backgroundColor = Color(0xFF2962FF),
+                contentColor = Color.White
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(
+                Icons.Default.Info,  // Using Info icon as placeholder for Analytics
+                contentDescription = "Analytics",
+                tint = Color.White
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Campaign Analytics Dashboard")
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
 

@@ -23,11 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import istick.app.beta.ui.navigation.AppNavigator.Screen
-import istick.app.beta.ui.screens.CampaignListScreen
-import istick.app.beta.ui.screens.CarManagementScreen
-import istick.app.beta.ui.screens.MileageVerificationScreen
-import istick.app.beta.ui.screens.ProfileScreen
+import istick.app.beta.ui.screens.*
 import istick.app.beta.utils.PerformanceMonitor
+import istick.app.beta.viewmodel.ProfileViewModel
 
 /**
  * Main navigation system for the app. Handles the bottom navigation
@@ -37,8 +35,12 @@ import istick.app.beta.utils.PerformanceMonitor
 fun NavigationSystem(
     appNavigator: AppNavigator,
     onLogout: () -> Unit,
+    onNavigateToAnalytics: () -> Unit = {
+        var currentScreen = Screen.CampaignAnalytics
+    },
     modifier: Modifier = Modifier
 ) {
+
     // State for current screen
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
     // Error state
@@ -161,6 +163,22 @@ fun NavigationSystem(
                     viewModel = profileViewModel,
                     performanceMonitor = appNavigator.performanceMonitor,
                     onLogout = onLogout
+                )
+            }
+
+            AnimatedVisibility(
+                visible = currentScreen == Screen.CampaignAnalytics,
+                enter = fadeIn(animationSpec = tween(300)) + slideInHorizontally(),
+                exit = fadeOut(animationSpec = tween(300)) + slideOutHorizontally()
+            ) {
+                val viewModel = remember { appNavigator.createCampaignAnalyticsViewModel() }
+
+                CampaignAnalyticsScreen(
+                    viewModel = viewModel,
+                    performanceMonitor = appNavigator.performanceMonitor,
+                    onBackClick = {
+                        currentScreen = Screen.Profile
+                    }
                 )
             }
 

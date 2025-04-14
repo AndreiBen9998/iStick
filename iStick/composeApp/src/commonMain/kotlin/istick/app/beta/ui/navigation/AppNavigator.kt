@@ -10,12 +10,8 @@ import istick.app.beta.repository.DefaultUserRepository
 import istick.app.beta.repository.UserRepository
 import istick.app.beta.storage.StorageRepository
 import istick.app.beta.utils.PerformanceMonitor
-import istick.app.beta.viewmodel.CarManagementViewModel
-import istick.app.beta.viewmodel.CampaignDetailViewModel
-import istick.app.beta.viewmodel.HomeViewModel
-import istick.app.beta.viewmodel.MileageVerificationViewModel
-import istick.app.beta.viewmodel.ProfileViewModel
 import istick.app.beta.di.DependencyInjection
+import istick.app.beta.viewmodel.*
 
 /**
  * Navigation manager for the app
@@ -61,6 +57,8 @@ class AppNavigator(
         object CreateCampaign : Screen()
         object ManageCampaigns : Screen()
         data class ManageApplications(val campaignId: String) : Screen()
+
+        object CampaignAnalytics : Screen()
     }
 
     fun createMileageVerificationViewModel(): MileageVerificationViewModel {
@@ -94,6 +92,13 @@ class AppNavigator(
             userRepository = userRepository,
             carRepository = carRepository,
             storageRepository = storageRepository
+        )
+    }
+
+    fun createCampaignAnalyticsViewModel(): CampaignAnalyticsViewModel {
+        return CampaignAnalyticsViewModel(
+            campaignRepository = campaignRepository,
+            userRepository = userRepository
         )
     }
 }

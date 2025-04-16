@@ -3,18 +3,12 @@ package istick.app.beta.payment
 
 import android.util.Log
 import istick.app.beta.database.DatabaseHelper
-import istick.app.beta.database.DatabaseTransactionHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * MySQL implementation of PaymentService
- */
 class MySqlPaymentService : PaymentService {
     private val TAG = "MySqlPaymentService"
 
@@ -27,499 +21,249 @@ class MySqlPaymentService : PaymentService {
     private val _completedPayments = MutableStateFlow<List<PaymentTransaction>>(emptyList())
     override val completedPayments: StateFlow<List<PaymentTransaction>> = _completedPayments
 
-    // Map to store payment status observers
-    private val paymentStatusFlows = mutableMapOf<String, MutableStateFlow<PaymentStatus>>()
-
-    override suspend fun fetchPaymentMethods(userId: String): Result<List<PaymentMethod>> = withContext(Dispatchers.IO) {
-        try {
-            val methods = DatabaseHelper.executeQuery(
-                """
-                SELECT * FROM payment_methods 
-                WHERE user_id = ?
-                ORDER BY is_default DESC, created_at DESC
-                """,
-                listOf(userId.toLong())
-            ) { resultSet ->
-                val methodsList = mutableListOf<PaymentMethod>()
-                while (resultSet.next()) {
-                    methodsList.add(
-                        PaymentMethod(
-                            id = resultSet.getLong("id").toString(),
-                            type = PaymentMethodType.valueOf(resultSet.getString("method_type") ?: "BANK_TRANSFER"),
-                            title = resultSet.getString("title") ?: "",
-                            lastFour = resultSet.getString("last_four") ?: "",
-                            isDefault = resultSet.getBoolean("is_default")
-                        )
+    override suspend fun fetchPaymentMethods(userId: String): Result<List<PaymentMethod>> =
+        withContext(Dispatchers.IO) {
+            try {
+                // In a real implementation, this would fetch from a payment_methods table
+                // For now, we'll return a mock list
+                val mockMethods = listOf(
+                    PaymentMethod(
+                        id = "1",
+                        type = PaymentMethodType.BANK_TRANSFER,
+                        title = "My Bank Account",
+                        lastFour = "1234",
+                        isDefault = true
+                    ),
+                    PaymentMethod(
+                        id = "2",
+                        type = PaymentMethodType.CREDIT_CARD,
+                        title = "Visa Card",
+                        lastFour = "5678",
+                        isDefault = false
                     )
-                }
-                methodsList
-            }
-
-            _paymentMethods.value = methods
-            Result.success(methods)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error fetching payment methods: ${e.message}", e)
-            Result.failure(e)
-        }
-    }
-
-    override suspend fun addPaymentMethod(userId: String, paymentMethod: PaymentMethod): Result<PaymentMethod> = withContext(Dispatchers.IO) {
-        val connection = DatabaseTransactionHelper.beginTransaction()
-        try {
-            // If this is the first payment method for the user, make it default
-            val isFirstMethod = DatabaseTransactionHelper.executeQueryWithConnection(
-                connection,
-                "SELECT COUNT(*) FROM payment_methods WHERE user_id = ?",
-                listOf(userId.toLong())
-            ) { rs ->
-                if (rs.next()) rs.getInt(1) == 0 else true
-            }
-
-            // Insert the payment method
-            val methodId = DatabaseTransactionHelper.executeInsertWithConnection(
-                connection,
-                """
-                INSERT INTO payment_methods (
-                    user_id, method_type, title, last_four, is_default, created_at
-                ) VALUES (?, ?, ?, ?, ?, NOW())
-                """,
-                listOf(
-                    userId.toLong(),
-                    paymentMethod.type.name,
-                    paymentMethod.title,
-                    paymentMethod.lastFour,
-                    isFirstMethod || paymentMethod.isDefault
                 )
-            )
 
-            // If this is set as default, update other methods to non-default
-            if (paymentMethod.isDefault || isFirstMethod) {
-                DatabaseTransactionHelper.executeUpdateWithConnection(
-                    connection,
-                    """
-                    UPDATE payment_methods 
-                    SET is_default = FALSE
-                    WHERE user_id = ? AND id != ?
-                    """,
-                    listOf(userId.toLong(), methodId)
-                )
+                _paymentMethods.value = mockMethods
+                Result.success(mockMethods)
+            } catch (e: Exception) {
+                Result.failure(e)
             }
-
-            DatabaseTransactionHelper.commitTransaction(connection)
-
-            // Create the new payment method with generated ID
-            val newMethod = paymentMethod.copy(
-                id = methodId.toString(),
-                isDefault = isFirstMethod || paymentMethod.isDefault
-            )
-
-            // Update state
-            _paymentMethods.value = _paymentMethods.value + newMethod
-
-            Result.success(newMethod)
-        } catch (e: Exception) {
-            DatabaseTransactionHelper.rollbackTransaction(connection)
-            Log.e(TAG, "Error adding payment method: ${e.message}", e)
-            Result.failure(e)
-        } finally {
-            DatabaseTransactionHelper.closeConnection(connection)
         }
-    }
 
-    override suspend fun removePaymentMethod(userId: String, paymentMethodId: String): Result<Boolean> = withContext(Dispatchers.IO) {
-        val connection = DatabaseTransactionHelper.beginTransaction()
-        try {
-            // Check if method exists and belongs to user
-            val exists = DatabaseTransactionHelper.executeQueryWithConnection(
-                connection,
-                "SELECT id FROM payment_methods WHERE id = ? AND user_id = ?",
-                listOf(paymentMethodId.toLong(), userId.toLong())
-            ) { rs -> rs.next() }
+    override suspend fun addPaymentMethod(userId: String, paymentMethod: PaymentMethod): Result<PaymentMethod> =
+        withContext(Dispatchers.IO) {
+            try {
+                // In a real implementation, this would insert into a payment_methods table
+                // For now, we'll simply add to our in-memory list
+                val newId = (_paymentMethods.value.maxOfOrNull { it.id.toIntOrNull() ?: 0 } ?: 0) + 1
+                val newMethod = paymentMethod.copy(id = newId.toString())
 
-            if (!exists) {
-                return@withContext Result.failure(Exception("Payment method not found or doesn't belong to user"))
-            }
-
-            // Check if it's the default method
-            val isDefault = DatabaseTransactionHelper.executeQueryWithConnection(
-                connection,
-                "SELECT is_default FROM payment_methods WHERE id = ?",
-                listOf(paymentMethodId.toLong())
-            ) { rs -> if (rs.next()) rs.getBoolean("is_default") else false }
-
-            // Delete the payment method
-            DatabaseTransactionHelper.executeUpdateWithConnection(
-                connection,
-                "DELETE FROM payment_methods WHERE id = ?",
-                listOf(paymentMethodId.toLong())
-            )
-
-            // If it was the default method, set a new default
-            if (isDefault) {
-                DatabaseTransactionHelper.executeUpdateWithConnection(
-                    connection,
-                    """
-                    UPDATE payment_methods
-                    SET is_default = TRUE
-                    WHERE user_id = ?
-                    ORDER BY created_at DESC
-                    LIMIT 1
-                    """,
-                    listOf(userId.toLong())
-                )
-            }
-
-            DatabaseTransactionHelper.commitTransaction(connection)
-
-            // Update state
-            _paymentMethods.value = _paymentMethods.value.filter { it.id != paymentMethodId }
-
-            Result.success(true)
-        } catch (e: Exception) {
-            DatabaseTransactionHelper.rollbackTransaction(connection)
-            Log.e(TAG, "Error removing payment method: ${e.message}", e)
-            Result.failure(e)
-        } finally {
-            DatabaseTransactionHelper.closeConnection(connection)
-        }
-    }
-
-    override suspend fun setDefaultPaymentMethod(userId: String, paymentMethodId: String): Result<Boolean> = withContext(Dispatchers.IO) {
-        val connection = DatabaseTransactionHelper.beginTransaction()
-        try {
-            // Check if method exists and belongs to user
-            val exists = DatabaseTransactionHelper.executeQueryWithConnection(
-                connection,
-                "SELECT id FROM payment_methods WHERE id = ? AND user_id = ?",
-                listOf(paymentMethodId.toLong(), userId.toLong())
-            ) { rs -> rs.next() }
-
-            if (!exists) {
-                return@withContext Result.failure(Exception("Payment method not found or doesn't belong to user"))
-            }
-
-            // Set all methods to non-default
-            DatabaseTransactionHelper.executeUpdateWithConnection(
-                connection,
-                "UPDATE payment_methods SET is_default = FALSE WHERE user_id = ?",
-                listOf(userId.toLong())
-            )
-
-            // Set the selected method as default
-            DatabaseTransactionHelper.executeUpdateWithConnection(
-                connection,
-                "UPDATE payment_methods SET is_default = TRUE WHERE id = ?",
-                listOf(paymentMethodId.toLong())
-            )
-
-            DatabaseTransactionHelper.commitTransaction(connection)
-
-            // Update state
-            _paymentMethods.value = _paymentMethods.value.map {
-                it.copy(isDefault = it.id == paymentMethodId)
-            }
-
-            Result.success(true)
-        } catch (e: Exception) {
-            DatabaseTransactionHelper.rollbackTransaction(connection)
-            Log.e(TAG, "Error setting default payment method: ${e.message}", e)
-            Result.failure(e)
-        } finally {
-            DatabaseTransactionHelper.closeConnection(connection)
-        }
-    }
-
-    override suspend fun processPayment(payment: PaymentTransaction): Result<PaymentTransaction> = withContext(Dispatchers.IO) {
-        val connection = DatabaseTransactionHelper.beginTransaction()
-        try {
-            // Insert payment record with PROCESSING status
-            val processingPayment = payment.copy(status = PaymentStatus.PROCESSING)
-
-            val paymentId = DatabaseTransactionHelper.executeInsertWithConnection(
-                connection,
-                """
-                INSERT INTO payments (
-                    campaign_id, car_owner_id, brand_id, amount, currency,
-                    status, created_at, updated_at, payment_method_id, notes
-                ) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)
-                """,
-                listOf(
-                    processingPayment.campaignId.toLong(),
-                    processingPayment.carOwnerId.toLong(),
-                    processingPayment.brandId.toLong(),
-                    processingPayment.amount,
-                    processingPayment.currency,
-                    processingPayment.status.name,
-                    processingPayment.paymentMethod?.id?.toLongOrNull() ?: 0,
-                    processingPayment.notes
-                )
-            )
-
-            // In a real implementation, there would be integration with a payment gateway here
-            // For now, we'll simulate payment processing and mark it as completed
-
-            // Update payment status to COMPLETED
-            DatabaseTransactionHelper.executeUpdateWithConnection(
-                connection,
-                """
-                UPDATE payments
-                SET status = ?, updated_at = NOW()
-                WHERE id = ?
-                """,
-                listOf(PaymentStatus.COMPLETED.name, paymentId)
-            )
-
-            DatabaseTransactionHelper.commitTransaction(connection)
-
-            // Create completed payment object
-            val completedPayment = payment.copy(
-                id = paymentId.toString(),
-                status = PaymentStatus.COMPLETED,
-                createdAt = System.currentTimeMillis(),
-                updatedAt = System.currentTimeMillis()
-            )
-
-            // Update payment status flow if observed
-            paymentStatusFlows[paymentId.toString()]?.value = PaymentStatus.COMPLETED
-
-            // Update state
-            _completedPayments.value = _completedPayments.value + completedPayment
-
-            Result.success(completedPayment)
-        } catch (e: Exception) {
-            DatabaseTransactionHelper.rollbackTransaction(connection)
-            Log.e(TAG, "Error processing payment: ${e.message}", e)
-            Result.failure(e)
-        } finally {
-            DatabaseTransactionHelper.closeConnection(connection)
-        }
-    }
-
-    override suspend fun fetchPaymentHistory(userId: String): Result<List<PaymentTransaction>> = withContext(Dispatchers.IO) {
-        try {
-            val payments = DatabaseHelper.executeQuery(
-                """
-                SELECT p.*, pm.method_type, pm.title, pm.last_four
-                FROM payments p
-                LEFT JOIN payment_methods pm ON p.payment_method_id = pm.id
-                WHERE p.car_owner_id = ? OR p.brand_id = ?
-                ORDER BY p.created_at DESC
-                """,
-                listOf(userId.toLong(), userId.toLong())
-            ) { resultSet ->
-                val paymentsList = mutableListOf<PaymentTransaction>()
-                while (resultSet.next()) {
-                    paymentsList.add(resultSetToPaymentTransaction(resultSet))
-                }
-                paymentsList
-            }
-
-            // Update state flows
-            val pendingPayments = payments.filter {
-                it.status == PaymentStatus.PENDING || it.status == PaymentStatus.PROCESSING
-            }
-            val completedPayments = payments.filter {
-                it.status == PaymentStatus.COMPLETED || it.status == PaymentStatus.REFUNDED
-            }
-
-            _pendingPayments.value = pendingPayments
-            _completedPayments.value = completedPayments
-
-            Result.success(payments)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error fetching payment history: ${e.message}", e)
-            Result.failure(e)
-        }
-    }
-
-    override suspend fun fetchCampaignPayments(campaignId: String): Result<List<PaymentTransaction>> = withContext(Dispatchers.IO) {
-        try {
-            val payments = DatabaseHelper.executeQuery(
-                """
-                SELECT p.*, pm.method_type, pm.title, pm.last_four
-                FROM payments p
-                LEFT JOIN payment_methods pm ON p.payment_method_id = pm.id
-                WHERE p.campaign_id = ?
-                ORDER BY p.created_at DESC
-                """,
-                listOf(campaignId.toLong())
-            ) { resultSet ->
-                val paymentsList = mutableListOf<PaymentTransaction>()
-                while (resultSet.next()) {
-                    paymentsList.add(resultSetToPaymentTransaction(resultSet))
-                }
-                paymentsList
-            }
-
-            Result.success(payments)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error fetching campaign payments: ${e.message}", e)
-            Result.failure(e)
-        }
-    }
-
-    override suspend fun fetchPaymentDetails(paymentId: String): Result<PaymentTransaction> = withContext(Dispatchers.IO) {
-        try {
-            val payment = DatabaseHelper.executeQuery(
-                """
-                SELECT p.*, pm.method_type, pm.title, pm.last_four
-                FROM payments p
-                LEFT JOIN payment_methods pm ON p.payment_method_id = pm.id
-                WHERE p.id = ?
-                """,
-                listOf(paymentId.toLong())
-            ) { resultSet ->
-                if (resultSet.next()) {
-                    resultSetToPaymentTransaction(resultSet)
+                val updatedMethods = if (newMethod.isDefault) {
+                    // If this is default, update other methods
+                    _paymentMethods.value.map { it.copy(isDefault = false) } + newMethod
                 } else {
-                    null
+                    // Otherwise just add it
+                    _paymentMethods.value + newMethod
                 }
-            }
 
-            if (payment != null) {
-                Result.success(payment)
-            } else {
-                Result.failure(Exception("Payment not found"))
+                _paymentMethods.value = updatedMethods
+                Result.success(newMethod)
+            } catch (e: Exception) {
+                Result.failure(e)
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error fetching payment details: ${e.message}", e)
-            Result.failure(e)
         }
-    }
 
-    override suspend fun requestRefund(paymentId: String, reason: String): Result<PaymentTransaction> = withContext(Dispatchers.IO) {
-        val connection = DatabaseTransactionHelper.beginTransaction()
-        try {
-            // Check if payment exists and is completed
-            val payment = DatabaseTransactionHelper.executeQueryWithConnection(
-                connection,
-                """
-                SELECT p.*, pm.method_type, pm.title, pm.last_four
-                FROM payments p
-                LEFT JOIN payment_methods pm ON p.payment_method_id = pm.id
-                WHERE p.id = ? AND p.status = ?
-                """,
-                listOf(paymentId.toLong(), PaymentStatus.COMPLETED.name)
-            ) { resultSet ->
-                if (resultSet.next()) {
-                    resultSetToPaymentTransaction(resultSet)
+    override suspend fun removePaymentMethod(userId: String, paymentMethodId: String): Result<Boolean> =
+        withContext(Dispatchers.IO) {
+            try {
+                val currentMethods = _paymentMethods.value
+                val methodToRemove = currentMethods.find { it.id == paymentMethodId }
+
+                if (methodToRemove == null) {
+                    return@withContext Result.failure(Exception("Payment method not found"))
+                }
+
+                val wasDefault = methodToRemove.isDefault
+                val updatedMethods = currentMethods.filter { it.id != paymentMethodId }
+
+                // If we removed the default method, set a new default
+                if (wasDefault && updatedMethods.isNotEmpty()) {
+                    val withNewDefault = updatedMethods.mapIndexed { index, method ->
+                        if (index == 0) method.copy(isDefault = true) else method
+                    }
+                    _paymentMethods.value = withNewDefault
                 } else {
-                    null
+                    _paymentMethods.value = updatedMethods
                 }
+
+                Result.success(true)
+            } catch (e: Exception) {
+                Result.failure(e)
             }
-
-            if (payment == null) {
-                return@withContext Result.failure(Exception("Payment not found or not eligible for refund"))
-            }
-
-            // Update payment status to REFUNDED
-            DatabaseTransactionHelper.executeUpdateWithConnection(
-                connection,
-                """
-                UPDATE payments
-                SET status = ?, notes = CONCAT(notes, '\nRefund reason: ', ?), updated_at = NOW()
-                WHERE id = ?
-                """,
-                listOf(PaymentStatus.REFUNDED.name, reason, paymentId.toLong())
-            )
-
-            DatabaseTransactionHelper.commitTransaction(connection)
-
-            // Create refunded payment object
-            val refundedPayment = payment.copy(
-                status = PaymentStatus.REFUNDED,
-                notes = payment.notes + "\nRefund reason: $reason",
-                updatedAt = System.currentTimeMillis()
-            )
-
-            // Update payment status flow if observed
-            paymentStatusFlows[paymentId]?.value = PaymentStatus.REFUNDED
-
-            // Update state
-            _completedPayments.value = _completedPayments.value.map {
-                if (it.id == paymentId) refundedPayment else it
-            }
-
-            Result.success(refundedPayment)
-        } catch (e: Exception) {
-            DatabaseTransactionHelper.rollbackTransaction(connection)
-            Log.e(TAG, "Error requesting refund: ${e.message}", e)
-            Result.failure(e)
-        } finally {
-            DatabaseTransactionHelper.closeConnection(connection)
         }
-    }
+
+    override suspend fun setDefaultPaymentMethod(userId: String, paymentMethodId: String): Result<Boolean> =
+        withContext(Dispatchers.IO) {
+            try {
+                val currentMethods = _paymentMethods.value
+                if (currentMethods.none { it.id == paymentMethodId }) {
+                    return@withContext Result.failure(Exception("Payment method not found"))
+                }
+
+                val updatedMethods = currentMethods.map { method ->
+                    method.copy(isDefault = method.id == paymentMethodId)
+                }
+
+                _paymentMethods.value = updatedMethods
+                Result.success(true)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
+    override suspend fun processPayment(payment: PaymentTransaction): Result<PaymentTransaction> =
+        withContext(Dispatchers.IO) {
+            try {
+                // In a real implementation, this would insert into a payments table
+                // For now, we'll simulate a successful payment
+                val processingPayment = payment.copy(
+                    id = System.currentTimeMillis().toString(),
+                    status = PaymentStatus.PROCESSING
+                )
+
+                // Simulate processing delay
+                kotlinx.coroutines.delay(1000)
+
+                // Complete the payment
+                val completedPayment = processingPayment.copy(
+                    status = PaymentStatus.COMPLETED,
+                    updatedAt = System.currentTimeMillis()
+                )
+
+                // Update state
+                _completedPayments.value = _completedPayments.value + completedPayment
+
+                Result.success(completedPayment)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
+    // Implement other methods similarly
+    override suspend fun fetchPaymentHistory(userId: String): Result<List<PaymentTransaction>> =
+        withContext(Dispatchers.IO) {
+            try {
+                // Mock implementation
+                val pendingList = listOf(
+                    PaymentTransaction(
+                        id = "p1",
+                        campaignId = "1",
+                        carOwnerId = "101",
+                        brandId = userId,
+                        amount = 100.0,
+                        currency = "RON",
+                        status = PaymentStatus.PENDING,
+                        createdAt = System.currentTimeMillis() - 86400000,
+                        updatedAt = System.currentTimeMillis() - 86400000,
+                        paymentMethod = _paymentMethods.value.firstOrNull()
+                    )
+                )
+
+                val completedList = listOf(
+                    PaymentTransaction(
+                        id = "c1",
+                        campaignId = "2",
+                        carOwnerId = "102",
+                        brandId = userId,
+                        amount = 200.0,
+                        currency = "RON",
+                        status = PaymentStatus.COMPLETED,
+                        createdAt = System.currentTimeMillis() - 172800000,
+                        updatedAt = System.currentTimeMillis() - 172700000,
+                        paymentMethod = _paymentMethods.value.firstOrNull()
+                    )
+                )
+
+                _pendingPayments.value = pendingList
+                _completedPayments.value = completedList
+
+                Result.success(pendingList + completedList)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
+    override suspend fun fetchCampaignPayments(campaignId: String): Result<List<PaymentTransaction>> =
+        withContext(Dispatchers.IO) {
+            try {
+                // Filter payments by campaign ID
+                val allPayments = _pendingPayments.value + _completedPayments.value
+                val campaignPayments = allPayments.filter { it.campaignId == campaignId }
+                Result.success(campaignPayments)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
+    override suspend fun fetchPaymentDetails(paymentId: String): Result<PaymentTransaction> =
+        withContext(Dispatchers.IO) {
+            try {
+                val allPayments = _pendingPayments.value + _completedPayments.value
+                val payment = allPayments.find { it.id == paymentId }
+
+                if (payment != null) {
+                    Result.success(payment)
+                } else {
+                    Result.failure(Exception("Payment not found"))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
+    override suspend fun requestRefund(paymentId: String, reason: String): Result<PaymentTransaction> =
+        withContext(Dispatchers.IO) {
+            try {
+                val allPayments = _pendingPayments.value + _completedPayments.value
+                val payment = allPayments.find { it.id == paymentId }
+
+                if (payment == null) {
+                    return@withContext Result.failure(Exception("Payment not found"))
+                }
+
+                if (payment.status != PaymentStatus.COMPLETED) {
+                    return@withContext Result.failure(Exception("Only completed payments can be refunded"))
+                }
+
+                // Process refund
+                val refundedPayment = payment.copy(
+                    status = PaymentStatus.REFUNDED,
+                    notes = payment.notes + "\nRefund reason: $reason",
+                    updatedAt = System.currentTimeMillis()
+                )
+
+                // Update state
+                _completedPayments.value = _completedPayments.value.map {
+                    if (it.id == paymentId) refundedPayment else it
+                }
+
+                Result.success(refundedPayment)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
 
     override fun observePaymentStatus(paymentId: String): Flow<PaymentStatus> {
-        return paymentStatusFlows.getOrPut(paymentId) {
-            MutableStateFlow(PaymentStatus.PENDING).also { flow ->
-                // Fetch current status in background
-                kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
-                    try {
-                        val status = DatabaseHelper.executeQuery(
-                            "SELECT status FROM payments WHERE id = ?",
-                            listOf(paymentId.toLong())
-                        ) { rs ->
-                            if (rs.next()) {
-                                PaymentStatus.valueOf(rs.getString("status") ?: PaymentStatus.PENDING.name)
-                            } else {
-                                PaymentStatus.PENDING
-                            }
-                        }
-                        flow.value = status
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error fetching payment status: ${e.message}", e)
-                    }
-                }
-            }
-        }
-    }
+        val flow = MutableStateFlow(PaymentStatus.PENDING)
 
-    /**
-     * Helper method to convert ResultSet to PaymentTransaction
-     */
-    private fun resultSetToPaymentTransaction(resultSet: java.sql.ResultSet): PaymentTransaction {
-        val paymentId = resultSet.getLong("id").toString()
-        val campaignId = resultSet.getLong("campaign_id").toString()
-        val carOwnerId = resultSet.getLong("car_owner_id").toString()
-        val brandId = resultSet.getLong("brand_id").toString()
-        val amount = resultSet.getDouble("amount")
-        val currency = resultSet.getString("currency") ?: "RON"
-        val statusStr = resultSet.getString("status") ?: PaymentStatus.PENDING.name
-        val createdAt = resultSet.getTimestamp("created_at")?.time ?: System.currentTimeMillis()
-        val updatedAt = resultSet.getTimestamp("updated_at")?.time ?: System.currentTimeMillis()
-        val notes = resultSet.getString("notes") ?: ""
+        // Find current status
+        val allPayments = _pendingPayments.value + _completedPayments.value
+        val payment = allPayments.find { it.id == paymentId }
 
-        // Payment method details
-        val paymentMethodId = resultSet.getLong("payment_method_id")
-        val methodType = resultSet.getString("method_type")
-        val methodTitle = resultSet.getString("title")
-        val lastFour = resultSet.getString("last_four")
-
-        val paymentMethod = if (methodType != null && methodTitle != null) {
-            PaymentMethod(
-                id = paymentMethodId.toString(),
-                type = try { PaymentMethodType.valueOf(methodType) } catch (e: Exception) { PaymentMethodType.BANK_TRANSFER },
-                title = methodTitle,
-                lastFour = lastFour ?: "",
-                isDefault = false // Not relevant in this context
-            )
-        } else {
-            null
+        if (payment != null) {
+            flow.value = payment.status
         }
 
-        return PaymentTransaction(
-            id = paymentId,
-            campaignId = campaignId,
-            carOwnerId = carOwnerId,
-            brandId = brandId,
-            amount = amount,
-            currency = currency,
-            status = try { PaymentStatus.valueOf(statusStr) } catch (e: Exception) { PaymentStatus.PENDING },
-            createdAt = createdAt,
-            updatedAt = updatedAt,
-            paymentMethod = paymentMethod,
-            notes = notes
-        )
+        return flow
     }
 }

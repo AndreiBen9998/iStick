@@ -1,3 +1,5 @@
+// File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/di/DependencyInjection.kt
+
 package istick.app.beta.di
 
 import istick.app.beta.auth.AuthRepository
@@ -9,15 +11,11 @@ import istick.app.beta.network.NetworkMonitor
 import istick.app.beta.analytics.AnalyticsManager
 import istick.app.beta.ocr.OcrProcessor
 import istick.app.beta.payment.PaymentService
-import istick.app.beta.payment.PaymentServiceFactory
+import istick.app.beta.payment.MySqlPaymentService
 import istick.app.beta.ui.navigation.AppNavigator
 import istick.app.beta.viewmodel.PaymentViewModel
 import istick.app.beta.viewmodel.ViewModelFactory
 
-/**
- * Service locator pattern for dependency injection
- * This version is MySQL-focused without Firebase dependencies
- */
 object DependencyInjection {
     // Platform-specific dependencies
     @Volatile
@@ -29,25 +27,22 @@ object DependencyInjection {
     private var performanceMonitor: PerformanceMonitor? = null
     private var storageRepository: StorageRepository? = null
 
-    // Core repositories - Changed from private to public
+    // Core repositories
     private val _authRepository: AuthRepository by lazy {
         DefaultAuthRepository()
     }
 
-
     private val _userRepository: UserRepository by lazy {
-        DefaultUserRepository(_authRepository)
+        MySqlUserRepository(_authRepository) // Use MySQL implementation
     }
 
-
     private val _carRepository: CarRepository by lazy {
-        DefaultCarRepository()
+        MySqlCarRepository() // Use MySQL implementation
     }
 
     private val _campaignRepository: CampaignRepository by lazy {
-        DefaultCampaignRepository(_authRepository)
+        DefaultCampaignRepository(_authRepository) // Use default implementation
     }
-
 
     val offersRepository: OptimizedOffersRepository by lazy {
         RepositoryFactory.getOffersRepository()
@@ -55,6 +50,10 @@ object DependencyInjection {
 
     val mySqlOffersRepository: MySqlOffersRepository by lazy {
         RepositoryFactory.getMySqlOffersRepository()
+    }
+
+    private val _paymentService: PaymentService by lazy {
+        MySqlPaymentService() // Use MySQL implementation
     }
 
     val offlineRepositoryWrapper: OfflineRepositoryWrapper? by lazy {

@@ -11,6 +11,7 @@ import istick.app.beta.repository.UserRepository
 import istick.app.beta.storage.StorageRepository
 import istick.app.beta.utils.PerformanceMonitor
 import istick.app.beta.di.DependencyInjection
+import istick.app.beta.payment.PaymentService
 import istick.app.beta.viewmodel.*
 
 /**
@@ -60,16 +61,14 @@ class AppNavigator(
 
         object CampaignAnalytics : Screen()
         data class Payment(val campaignId: String, val carOwnerId: String) : Screen()
+    }
 
-        /**
-         * Create payment view model
-         */
-        fun createPaymentViewModel(): PaymentViewModel {
-            return PaymentViewModel(
-                paymentService = DependencyInjection.getPaymentService(),
-                authRepository = AuthRepository
-            )
-        }
+    // Function moved from Screen class to the outer class
+    fun createPaymentViewModel(): PaymentViewModel {
+        return PaymentViewModel(
+            paymentService = DependencyInjection.getPaymentService(),
+            authRepository = authRepository // Use the instance property instead of companion
+        )
     }
 
     fun createMileageVerificationViewModel(): MileageVerificationViewModel {

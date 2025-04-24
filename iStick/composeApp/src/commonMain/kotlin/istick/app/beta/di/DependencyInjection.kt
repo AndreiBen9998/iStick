@@ -1,5 +1,4 @@
-// File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/di/DependencyInjection.kt
-
+// Fixed version with only one _paymentService declaration
 package istick.app.beta.di
 
 import istick.app.beta.auth.AuthRepository
@@ -33,15 +32,15 @@ object DependencyInjection {
     }
 
     private val _userRepository: UserRepository by lazy {
-        MySqlUserRepository(_authRepository) // Use MySQL implementation
+        MySqlUserRepository(_authRepository)
     }
 
     private val _carRepository: CarRepository by lazy {
-        MySqlCarRepository() // Use MySQL implementation
+        MySqlCarRepository()
     }
 
     private val _campaignRepository: CampaignRepository by lazy {
-        DefaultCampaignRepository(_authRepository) // Use default implementation
+        DefaultCampaignRepository(_authRepository)
     }
 
     val offersRepository: OptimizedOffersRepository by lazy {
@@ -52,8 +51,9 @@ object DependencyInjection {
         RepositoryFactory.getMySqlOffersRepository()
     }
 
+    // FIXED: only one payment service declaration
     private val _paymentService: PaymentService by lazy {
-        MySqlPaymentService() // Use MySQL implementation
+        MySqlPaymentService()
     }
 
     val offlineRepositoryWrapper: OfflineRepositoryWrapper? by lazy {
@@ -71,26 +71,14 @@ object DependencyInjection {
         )
     }
 
-
-    /**
-     * Set the platform-specific context
-     * @param context Platform-specific context object
-     */
     @Synchronized
     fun setPlatformContext(context: Any) {
         platformContext = context
     }
 
-    /**
-     * Get the platform-specific context
-     * @return Platform-specific context or null
-     */
     @Synchronized
     fun getPlatformContext(): Any? = platformContext
 
-    /**
-     * Initialize platform-specific dependencies
-     */
     fun initPlatformDependencies(
         context: Any,
         networkMonitor: NetworkMonitor,
@@ -99,7 +87,6 @@ object DependencyInjection {
         performanceMonitor: PerformanceMonitor,
         storageRepository: StorageRepository
     ) {
-        // Implement your platform dependencies initialization here
         setPlatformContext(context)
         this.networkMonitor = networkMonitor
         this.analyticsManager = analyticsManager
@@ -108,18 +95,10 @@ object DependencyInjection {
         this.storageRepository = storageRepository
     }
 
-    /**
-     * Initialize repositories
-     */
     fun initRepositories() {
-        // Implement your repositories initialization logic here
-        // This would typically be called after platform dependencies are set up
+        // Repository initialization
     }
 
-    // The following getter methods are removed to avoid platform declaration clashes
-    // Instead, use the public properties directly
-
-    // The other getter methods that weren't in the clash errors can remain
     fun getStorageRepository(): StorageRepository {
         return storageRepository ?: throw IllegalStateException("StorageRepository not initialized")
     }
@@ -140,11 +119,7 @@ object DependencyInjection {
         return performanceMonitor ?: throw IllegalStateException("PerformanceMonitor not initialized")
     }
 
-    /**
-     * Clean up resources when the app is shutting down
-     */
     fun cleanup() {
-        // Release resources
         networkMonitor = null
         analyticsManager = null
         ocrProcessor = null
@@ -153,29 +128,18 @@ object DependencyInjection {
         platformContext = null
     }
 
-    // Repository getter methods
-   fun getAuthRepository(): AuthRepository = _authRepository
+    fun getAuthRepository(): AuthRepository = _authRepository
 
-   fun getUserRepository(): UserRepository = _userRepository
+    fun getUserRepository(): UserRepository = _userRepository
 
-   fun getAppNavigator(): AppNavigator = _appNavigator
+    fun getAppNavigator(): AppNavigator = _appNavigator
 
-   fun getCarRepository(): CarRepository = _carRepository
+    fun getCarRepository(): CarRepository = _carRepository
 
-   fun getCampaignRepository(): CampaignRepository = _campaignRepository
+    fun getCampaignRepository(): CampaignRepository = _campaignRepository
 
-    private val _paymentService: PaymentService by lazy {
-        PaymentServiceFactory.createPaymentService()
-    }
-
-    /**
-     * Get the payment service
-     */
     fun getPaymentService(): PaymentService = _paymentService
 
-    /**
-     * Create a payment view model
-     */
     fun createPaymentViewModel(): PaymentViewModel {
         return ViewModelFactory.createPaymentViewModel(
             authRepository = getAuthRepository(),

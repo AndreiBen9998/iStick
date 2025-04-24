@@ -14,12 +14,12 @@ import kotlinx.coroutines.withContext
 /**
  * MySQL implementation of UserRepository
  */
-class MySqlUserRepository(private val authRepository: AuthRepository) : UserRepository {
+actual class MySqlUserRepository actual constructor(private val authRepository: AuthRepository) : UserRepository {
     private val TAG = "MySqlUserRepository"
     private val _currentUser = MutableStateFlow<User?>(null)
-    override val currentUser: StateFlow<User?> = _currentUser
+    actual override val currentUser: StateFlow<User?> = _currentUser
 
-    override suspend fun createUser(email: String, name: String, userType: UserType): Result<User> = withContext(Dispatchers.IO) {
+    actual override suspend fun createUser(email: String, name: String, userType: UserType): Result<User> = withContext(Dispatchers.IO) {
         try {
             val userId = authRepository.getCurrentUserId() ?: return@withContext Result.failure(Exception("User not authenticated"))
 
@@ -62,7 +62,7 @@ class MySqlUserRepository(private val authRepository: AuthRepository) : UserRepo
         }
     }
 
-    override suspend fun updateUser(user: User): Result<User> = withContext(Dispatchers.IO) {
+    actual override suspend fun updateUser(user: User): Result<User> = withContext(Dispatchers.IO) {
         try {
             val result = when (user) {
                 is CarOwner -> {
@@ -135,7 +135,7 @@ class MySqlUserRepository(private val authRepository: AuthRepository) : UserRepo
         }
     }
 
-    override suspend fun getCurrentUser(): Result<User?> = withContext(Dispatchers.IO) {
+    actual override suspend fun getCurrentUser(): Result<User?> = withContext(Dispatchers.IO) {
         try {
             val userId = authRepository.getCurrentUserId() ?: return@withContext Result.success(null)
 
@@ -158,7 +158,7 @@ class MySqlUserRepository(private val authRepository: AuthRepository) : UserRepo
         }
     }
 
-    override suspend fun updateUserProfilePicture(userId: String, imageUrl: String): Result<User> = withContext(Dispatchers.IO) {
+    actual override suspend fun updateUserProfilePicture(userId: String, imageUrl: String): Result<User> = withContext(Dispatchers.IO) {
         try {
             // First determine the user type
             val userType = getUserType(userId)

@@ -13,13 +13,13 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.runBlocking
 import java.sql.Date
 
-class MySqlCarRepository : CarRepository {
+actual class MySqlCarRepository : CarRepository {
     private val TAG = "MySqlCarRepository"
 
     private val _userCars = MutableStateFlow<List<Car>>(emptyList())
-    override val userCars: StateFlow<List<Car>> = _userCars
+    actual override val userCars: StateFlow<List<Car>> = _userCars
 
-    override suspend fun fetchUserCars(userId: String): Result<List<Car>> = withContext(Dispatchers.IO) {
+    actual override suspend fun fetchUserCars(userId: String): Result<List<Car>> = withContext(Dispatchers.IO) {
         try {
             val cars = DatabaseHelper.executeQuery(
                 "SELECT * FROM cars WHERE user_id = ?",
@@ -55,7 +55,7 @@ class MySqlCarRepository : CarRepository {
         }
     }
 
-    override suspend fun getCar(carId: String): Result<Car> = withContext(Dispatchers.IO) {
+    actual override suspend fun getCar(carId: String): Result<Car> = withContext(Dispatchers.IO) {
         try {
             val car = DatabaseHelper.executeQuery(
                 "SELECT * FROM cars WHERE id = ?",
@@ -89,7 +89,7 @@ class MySqlCarRepository : CarRepository {
         }
     }
 
-    override suspend fun addCar(car: Car): Result<Car> = withContext(Dispatchers.IO) {
+    actual override suspend fun addCar(car: Car): Result<Car> = withContext(Dispatchers.IO) {
         try {
             // Get current user ID
             val userId = "1" // In a real app, get this from AuthRepository
@@ -129,7 +129,7 @@ class MySqlCarRepository : CarRepository {
         }
     }
 
-    override suspend fun updateCar(car: Car): Result<Car> = withContext(Dispatchers.IO) {
+    actual override suspend fun updateCar(car: Car): Result<Car> = withContext(Dispatchers.IO) {
         try {
             // Update car record
             val rowsUpdated = DatabaseHelper.executeUpdate(
@@ -170,7 +170,7 @@ class MySqlCarRepository : CarRepository {
         }
     }
 
-    override suspend fun deleteCar(carId: String): Result<Boolean> = withContext(Dispatchers.IO) {
+    actual override suspend fun deleteCar(carId: String): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
             // Delete car record
             val rowsDeleted = DatabaseHelper.executeUpdate(
@@ -192,7 +192,7 @@ class MySqlCarRepository : CarRepository {
         }
     }
 
-    override suspend fun addMileageVerification(carId: String, verification: MileageVerification): Result<MileageVerification> = withContext(Dispatchers.IO) {
+    actual override suspend fun addMileageVerification(carId: String, verification: MileageVerification): Result<MileageVerification> = withContext(Dispatchers.IO) {
         try {
             // Insert verification record
             val verificationId = DatabaseHelper.executeInsert(

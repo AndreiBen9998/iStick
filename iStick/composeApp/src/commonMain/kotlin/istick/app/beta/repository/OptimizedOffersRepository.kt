@@ -1,4 +1,3 @@
-// File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/repository/OptimizedOffersRepository.kt
 package istick.app.beta.repository
 
 import istick.app.beta.model.Campaign
@@ -6,11 +5,7 @@ import istick.app.beta.model.CampaignStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-/**
- * Repository for managing promotional offers with optimization for
- * fast loading and caching.
- */
-class OptimizedOffersRepository {
+open class OptimizedOffersRepository : OffersRepositoryInterface {
     private val _cachedOffers = MutableStateFlow<List<Campaign>>(emptyList())
     val cachedOffers: StateFlow<List<Campaign>> = _cachedOffers
 
@@ -18,7 +13,7 @@ class OptimizedOffersRepository {
     val hasMorePages: StateFlow<Boolean> = _hasMorePages
 
     // Cache for storing fetched offers
-    private val cache = mutableMapOf<String, Campaign>()
+    protected val cache = mutableMapOf<String, Campaign>()
 
     // Timestamp of last refresh to limit frequent updates
     private var lastRefreshTimestamp = 0L
@@ -27,7 +22,7 @@ class OptimizedOffersRepository {
      * Get offers with pagination support.
      * First loads from cache if available, then updates from the backend.
      */
-    fun getOffers(onSuccess: (List<Campaign>) -> Unit, onError: (Exception) -> Unit) {
+    override fun getOffers(onSuccess: (List<Campaign>) -> Unit, onError: (Exception) -> Unit) {
         // For demo purpose, return mock data
         if (_cachedOffers.value.isNotEmpty()) {
             onSuccess(_cachedOffers.value)
@@ -89,7 +84,7 @@ class OptimizedOffersRepository {
     /**
      * Load the next page of offers.
      */
-    fun getNextOffersPage(onSuccess: (List<Campaign>, Boolean) -> Unit, onError: (Exception) -> Unit) {
+    override fun getNextOffersPage(onSuccess: (List<Campaign>, Boolean) -> Unit, onError: (Exception) -> Unit) {
         if (!_hasMorePages.value) {
             onSuccess(emptyList(), false)
             return
@@ -140,7 +135,7 @@ class OptimizedOffersRepository {
     /**
      * Get details for a specific offer.
      */
-    fun getOfferDetails(offerId: String, onSuccess: (Campaign) -> Unit, onError: (Exception) -> Unit) {
+    override fun getOfferDetails(offerId: String, onSuccess: (Campaign) -> Unit, onError: (Exception) -> Unit) {
         // Check cache first
         cache[offerId]?.let {
             onSuccess(it)
@@ -181,7 +176,7 @@ class OptimizedOffersRepository {
     /**
      * Clear the cache and fetch fresh data.
      */
-    fun clearCache() {
+    override fun clearCache() {
         cache.clear()
         _cachedOffers.value = emptyList()
         _hasMorePages.value = true

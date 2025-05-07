@@ -1,4 +1,4 @@
-// androidMain/kotlin/istick/app/beta/repository/MySqlOffersRepository.kt
+// File: iStick/composeApp/src/androidMain/kotlin/istick/app/beta/repository/MySqlOffersRepository.kt
 package istick.app.beta.repository
 
 import android.util.Log
@@ -26,99 +26,103 @@ actual class MySqlOffersRepository actual constructor() : OffersRepositoryInterf
     private val pageSize = 10
 
     actual override suspend fun getOffers(onSuccess: (List<Campaign>) -> Unit, onError: (Exception) -> Unit) {
-        // Reset pagination
-        lastOffset = 0
-        hasMore = true
+        withContext(Dispatchers.IO) {
+            try {
+                // Reset pagination
+                lastOffset = 0
+                hasMore = true
 
-        // First try to get data from database
-        try {
-            val offers = fetchOffersFromDatabase(0, pageSize)
-            if (offers.isNotEmpty()) {
-                // Update cache
-                offers.forEach { offer ->
-                    cache[offer.id] = offer
+                // First try to get data from database
+                try {
+                    val offers = fetchOffersFromDatabase(0, pageSize)
+                    if (offers.isNotEmpty()) {
+                        // Update cache
+                        offers.forEach { offer ->
+                            cache[offer.id] = offer
+                        }
+
+                        onSuccess(offers)
+                        return@withContext
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error fetching offers from database", e)
+                    onError(e)
+                    return@withContext
                 }
-
-                onSuccess(offers)
-                return
+            } catch (e: Exception) {
+                onError(e)
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error fetching offers from database", e)
-            // Fallback to mock data
         }
-
-        // Fallback to mock data
-        val mockOffers = createMockOffers()
-        mockOffers.forEach { offer ->
-            cache[offer.id] = offer
-        }
-
-        onSuccess(mockOffers)
     }
 
     actual override suspend fun getNextOffersPage(onSuccess: (List<Campaign>, Boolean) -> Unit, onError: (Exception) -> Unit) {
-        if (!hasMore) {
-            onSuccess(emptyList(), false)
-            return
-        }
-
-        lastOffset += pageSize
-
-        // Try to get next page from database
-        try {
-            val offers = fetchOffersFromDatabase(lastOffset, pageSize)
-            val hasMoreItems = offers.size >= pageSize
-            hasMore = hasMoreItems
-
-            if (offers.isNotEmpty()) {
-                // Update cache
-                offers.forEach { offer ->
-                    cache[offer.id] = offer
+        withContext(Dispatchers.IO) {
+            try {
+                if (!hasMore) {
+                    onSuccess(emptyList(), false)
+                    return@withContext
                 }
 
-                onSuccess(offers, hasMoreItems)
-                return
+                lastOffset += pageSize
+
+                // Try to get next page from database
+                try {
+                    val offers = fetchOffersFromDatabase(lastOffset, pageSize)
+                    val hasMoreItems = offers.size >= pageSize
+                    hasMore = hasMoreItems
+
+                    if (offers.isNotEmpty()) {
+                        // Update cache
+                        offers.forEach { offer ->
+                            cache[offer.id] = offer
+                        }
+
+                        onSuccess(offers, hasMoreItems)
+                        return@withContext
+                    } else {
+                        onSuccess(emptyList(), false)
+                        return@withContext
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error fetching next page from database", e)
+                    onError(e)
+                    return@withContext
+                }
+            } catch (e: Exception) {
+                onError(e)
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error fetching next page from database", e)
-            // Fallback to mock data
         }
-
-        // Fallback to mock data for the next page
-        val mockOffers = createNextPageMockOffers()
-        hasMore = false
-
-        mockOffers.forEach { offer ->
-            cache[offer.id] = offer
-        }
-
-        onSuccess(mockOffers, false)
     }
 
     actual override suspend fun getOfferDetails(offerId: String, onSuccess: (Campaign) -> Unit, onError: (Exception) -> Unit) {
-        // Check cache first
-        cache[offerId]?.let {
-            onSuccess(it)
-            return
-        }
+        withContext(Dispatchers.IO) {
+            try {
+                // Check cache first
+                cache[offerId]?.let {
+                    onSuccess(it)
+                    return@withContext
+                }
 
-        // Try to get details from database
-        try {
-            val offer = fetchOfferDetailsFromDatabase(offerId)
-            if (offer != null) {
-                cache[offerId] = offer
-                onSuccess(offer)
-                return
+                // Try to get details from database
+                try {
+                    val offer = fetchOfferDetailsFromDatabase(offerId)
+                    if (offer != null) {
+                        cache[offerId] = offer
+                        onSuccess(offer)
+                        return@withContext
+                    } else {
+                        onError(Exception("Offer not found"))
+                        return@withContext
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error fetching offer details from database", e)
+                    onError(e)
+                    return@withContext
+                }
+            } catch (e: Exception) {
+                onError(e)
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error fetching offer details from database", e)
-            // Fallback to mock data
         }
-
-        // Fallback to mock data
-        val mockOffer = createMockOffer(offerId)
-        cache[offerId] = mockOffer
-        onSuccess(mockOffer)
     }
 
     actual override fun clearCache() {
@@ -130,6 +134,8 @@ actual class MySqlOffersRepository actual constructor() : OffersRepositoryInterf
     // Private methods for database operations
     private suspend fun fetchOffersFromDatabase(offset: Int, limit: Int): List<Campaign> = withContext(Dispatchers.IO) {
         try {
+            val campaignsList = mutableListOf<Campaign>()
+
             DatabaseHelper.executeQuery(
                 """
                 SELECT c.*, p.amount, p.currency, p.payment_frequency, p.payment_method
@@ -141,15 +147,12 @@ actual class MySqlOffersRepository actual constructor() : OffersRepositoryInterf
                 """,
                 listOf(limit, offset)
             ) { rs ->
-                val campaigns = mutableListOf<Campaign>()
                 while (rs.next()) {
                     val campaignId = rs.getString("id")
 
-                    // Get sticker details
-                    val stickerDetails = getStickerDetails(campaignId)
-
-                    // Get requirements
-                    val requirements = getRequirements(campaignId)
+                    // Get sticker details and requirements synchronously
+                    val stickerDetails = getStickerDetailsSync(campaignId)
+                    val requirements = getRequirementsSync(campaignId)
 
                     // Get payment details
                     val paymentDetails = PaymentDetails(
@@ -186,18 +189,21 @@ actual class MySqlOffersRepository actual constructor() : OffersRepositoryInterf
                         updatedAt = rs.getLong("updated_at")
                     )
 
-                    campaigns.add(campaign)
+                    campaignsList.add(campaign)
                 }
-                campaigns
             }
+
+            campaignsList
         } catch (e: Exception) {
             Log.e(TAG, "Error in fetchOffersFromDatabase", e)
-            emptyList()
+            throw e
         }
     }
 
     private suspend fun fetchOfferDetailsFromDatabase(offerId: String): Campaign? = withContext(Dispatchers.IO) {
         try {
+            var campaign: Campaign? = null
+
             DatabaseHelper.executeQuery(
                 """
                 SELECT c.*, p.amount, p.currency, p.payment_frequency, p.payment_method
@@ -210,11 +216,9 @@ actual class MySqlOffersRepository actual constructor() : OffersRepositoryInterf
                 if (rs.next()) {
                     val campaignId = rs.getString("id")
 
-                    // Get sticker details
-                    val stickerDetails = getStickerDetails(campaignId)
-
-                    // Get requirements
-                    val requirements = getRequirements(campaignId)
+                    // Get sticker details and requirements synchronously
+                    val stickerDetails = getStickerDetailsSync(campaignId)
+                    val requirements = getRequirementsSync(campaignId)
 
                     // Get payment details
                     val paymentDetails = PaymentDetails(
@@ -232,7 +236,7 @@ actual class MySqlOffersRepository actual constructor() : OffersRepositoryInterf
                         }
                     )
 
-                    Campaign(
+                    campaign = Campaign(
                         id = campaignId,
                         brandId = rs.getString("brand_id"),
                         title = rs.getString("title"),
@@ -250,16 +254,22 @@ actual class MySqlOffersRepository actual constructor() : OffersRepositoryInterf
                         createdAt = rs.getLong("created_at"),
                         updatedAt = rs.getLong("updated_at")
                     )
-                } else null
+                }
             }
+
+            campaign
         } catch (e: Exception) {
             Log.e(TAG, "Error in fetchOfferDetailsFromDatabase", e)
-            null
+            throw e
         }
     }
 
-    private suspend fun getStickerDetails(campaignId: String): StickerDetails = withContext(Dispatchers.IO) {
+    // Using non-suspending versions to avoid the issue with suspension in lambdas
+    private fun getStickerDetailsSync(campaignId: String): StickerDetails {
         try {
+            var stickerDetails = StickerDetails()
+            val positions = mutableListOf<StickerPosition>()
+
             DatabaseHelper.executeQuery(
                 """
                 SELECT s.*, p.position
@@ -269,9 +279,6 @@ actual class MySqlOffersRepository actual constructor() : OffersRepositoryInterf
                 """,
                 listOf(campaignId)
             ) { rs ->
-                var stickerDetails = StickerDetails()
-                val positions = mutableListOf<StickerPosition>()
-
                 while (rs.next()) {
                     if (stickerDetails.imageUrl.isEmpty()) {
                         // First row contains the sticker details
@@ -297,24 +304,26 @@ actual class MySqlOffersRepository actual constructor() : OffersRepositoryInterf
                         }
                     }
                 }
-
-                // Default positions if none found
-                if (positions.isEmpty()) {
-                    positions.add(StickerPosition.DOOR_LEFT)
-                }
-
-                stickerDetails.copy(positions = positions)
             }
+
+            // Default positions if none found
+            if (positions.isEmpty()) {
+                positions.add(StickerPosition.DOOR_LEFT)
+            }
+
+            return stickerDetails.copy(positions = positions)
         } catch (e: Exception) {
             Log.e(TAG, "Error getting sticker details", e)
-            StickerDetails(
+            return StickerDetails(
                 positions = listOf(StickerPosition.DOOR_LEFT)
             )
         }
     }
 
-    private suspend fun getRequirements(campaignId: String): CampaignRequirements = withContext(Dispatchers.IO) {
+    private fun getRequirementsSync(campaignId: String): CampaignRequirements {
         try {
+            var requirements = CampaignRequirements()
+
             DatabaseHelper.executeQuery(
                 "SELECT * FROM campaign_requirements WHERE campaign_id = ?",
                 listOf(campaignId)
@@ -329,119 +338,21 @@ actual class MySqlOffersRepository actual constructor() : OffersRepositoryInterf
                     val carModelStr = rs.getString("car_model")
                     val carModels = if (carModelStr != null) listOf(carModelStr) else emptyList()
 
-                    CampaignRequirements(
+                    requirements = CampaignRequirements(
                         minDailyDistance = rs.getInt("min_daily_distance"),
                         cities = cities,
                         carMakes = carMakes,
                         carModels = carModels,
-                        carYearMin = rs.getObject("car_year_min") as Int?,
-                        carYearMax = rs.getObject("car_year_max") as Int?
+                        carYearMin = rs.getObject("car_year_min") as? Int,
+                        carYearMax = rs.getObject("car_year_max") as? Int
                     )
-                } else {
-                    CampaignRequirements()
                 }
             }
+
+            return requirements
         } catch (e: Exception) {
             Log.e(TAG, "Error getting requirements", e)
-            CampaignRequirements()
+            return CampaignRequirements()
         }
-    }
-
-    private fun createMockOffers(): List<Campaign> {
-        return listOf(
-            Campaign(
-                id = "offer1",
-                brandId = "brand1",
-                title = "TechCorp Promotional Campaign",
-                description = "Promote our tech products on your car",
-                status = CampaignStatus.ACTIVE,
-                payment = PaymentDetails(
-                    amount = 500.0,
-                    currency = "RON"
-                )
-            ),
-            Campaign(
-                id = "offer2",
-                brandId = "brand2",
-                title = "EcoFriendly Campaign",
-                description = "Promote eco-friendly products",
-                status = CampaignStatus.ACTIVE,
-                payment = PaymentDetails(
-                    amount = 450.0,
-                    currency = "RON"
-                )
-            ),
-            Campaign(
-                id = "offer3",
-                brandId = "brand3",
-                title = "Local Business Promotion",
-                description = "Support local businesses with your car",
-                status = CampaignStatus.ACTIVE,
-                payment = PaymentDetails(
-                    amount = 400.0,
-                    currency = "RON"
-                )
-            )
-        )
-    }
-
-    private fun createNextPageMockOffers(): List<Campaign> {
-        return listOf(
-            Campaign(
-                id = "offer4",
-                brandId = "brand4",
-                title = "Fitness Promotion",
-                description = "Promote fitness products with your car",
-                status = CampaignStatus.ACTIVE,
-                payment = PaymentDetails(
-                    amount = 550.0,
-                    currency = "RON"
-                )
-            ),
-            Campaign(
-                id = "offer5",
-                brandId = "brand5",
-                title = "Coffee Shop Ads",
-                description = "Promote local coffee shops",
-                status = CampaignStatus.ACTIVE,
-                payment = PaymentDetails(
-                    amount = 350.0,
-                    currency = "RON"
-                )
-            )
-        )
-    }
-
-    private fun createMockOffer(offerId: String): Campaign {
-        return Campaign(
-            id = offerId,
-            brandId = "brand1",
-            title = "Special Campaign",
-            description = "This is a detailed description of the campaign with all the information you need to know about promoting our products on your car.",
-            status = CampaignStatus.ACTIVE,
-            stickerDetails = StickerDetails(
-                imageUrl = "https://example.com/sticker.jpg",
-                width = 30,
-                height = 20,
-                positions = listOf(StickerPosition.DOOR_LEFT, StickerPosition.DOOR_RIGHT),
-                deliveryMethod = DeliveryMethod.HOME_KIT
-            ),
-            payment = PaymentDetails(
-                amount = 500.0,
-                currency = "RON",
-                paymentFrequency = PaymentFrequency.MONTHLY,
-                paymentMethod = PaymentMethod.BANK_TRANSFER
-            ),
-            requirements = CampaignRequirements(
-                minDailyDistance = 30,
-                cities = listOf("București", "Cluj"),
-                carMakes = listOf("Toyota", "Honda"),
-                carYearMin = 2015
-            ),
-            startDate = System.currentTimeMillis(),
-            endDate = System.currentTimeMillis() + 2592000000, // 30 days from now
-            createdAt = System.currentTimeMillis() - 259200000, // 3 days ago
-            updatedAt = System.currentTimeMillis()
-        )
     }
 }

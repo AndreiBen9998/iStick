@@ -3,10 +3,12 @@ package istick.app.beta.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import istick.app.beta.di.DependencyInjection
 import istick.app.beta.model.Campaign
 import istick.app.beta.model.User
 import istick.app.beta.model.UserType
-import istick.app.beta.repository.OptimizedOffersRepository
+import istick.app.beta.repository.OffersRepositoryInterface
+import istick.app.beta.repository.RepositoryFactory
 import istick.app.beta.repository.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,7 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class HomeViewModel(
-    private val offersRepository: OptimizedOffersRepository = OptimizedOffersRepository(),
+    private val offersRepository: OffersRepositoryInterface = DependencyInjection.offersRepository,
     private val userRepository: UserRepository
 ) : ViewModel() {
     // UI state for campaigns
@@ -72,25 +74,28 @@ class HomeViewModel(
         _isLoading.value = true
         _error.value = null
 
-        // Check user type to determine what to load
-        val userType = _currentUser.value?.type
+        // Call suspend function within a coroutine
+        viewModelScope.launch {
+            // Check user type to determine what to load
+            val userType = _currentUser.value?.type
 
-        offersRepository.getOffers(
-            onSuccess = { campaignList ->
-                if (userType == UserType.BRAND) {
-                    // Brands see their own campaigns
-                    _campaigns.value = campaignList.filter { it.brandId == _currentUser.value?.id }
-                } else {
-                    // Car owners see available campaigns
-                    _campaigns.value = campaignList
+            offersRepository.getOffers(
+                onSuccess = { campaignList ->
+                    if (userType == UserType.BRAND) {
+                        // Brands see their own campaigns
+                        _campaigns.value = campaignList.filter { it.brandId == _currentUser.value?.id }
+                    } else {
+                        // Car owners see available campaigns
+                        _campaigns.value = campaignList
+                    }
+                    _isLoading.value = false
+                },
+                onError = { error ->
+                    _error.value = "Failed to load campaigns: ${error.message}"
+                    _isLoading.value = false
                 }
-                _isLoading.value = false
-            },
-            onError = { error ->
-                _error.value = "Failed to load campaigns: ${error.message}"
-                _isLoading.value = false
-            }
-        )
+            )
+        }
     }
 
     /**
@@ -101,24 +106,27 @@ class HomeViewModel(
 
         _isLoading.value = true
 
-        offersRepository.getNextOffersPage(
-            onSuccess = { newCampaigns, hasMore ->
-                val userType = _currentUser.value?.type
-                val filteredNewCampaigns = if (userType == UserType.BRAND) {
-                    newCampaigns.filter { it.brandId == _currentUser.value?.id }
-                } else {
-                    newCampaigns
-                }
+        // Call suspend function within a coroutine
+        viewModelScope.launch {
+            offersRepository.getNextOffersPage(
+                onSuccess = { newCampaigns, hasMore ->
+                    val userType = _currentUser.value?.type
+                    val filteredNewCampaigns = if (userType == UserType.BRAND) {
+                        newCampaigns.filter { it.brandId == _currentUser.value?.id }
+                    } else {
+                        newCampaigns
+                    }
 
-                _campaigns.value = _campaigns.value + filteredNewCampaigns
-                _isEndReached.value = !hasMore
-                _isLoading.value = false
-            },
-            onError = { error ->
-                _error.value = "Failed to load more campaigns: ${error.message}"
-                _isLoading.value = false
-            }
-        )
+                    _campaigns.value = _campaigns.value + filteredNewCampaigns
+                    _isEndReached.value = !hasMore
+                    _isLoading.value = false
+                },
+                onError = { error ->
+                    _error.value = "Failed to load more campaigns: ${error.message}"
+                    _isLoading.value = false
+                }
+            )
+        }
     }
 
     /**

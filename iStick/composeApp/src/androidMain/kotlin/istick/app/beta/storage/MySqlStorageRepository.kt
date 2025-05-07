@@ -1,4 +1,4 @@
-// androidMain/kotlin/istick/app/beta/storage/MySqlStorageRepository.kt
+// File: iStick/composeApp/src/androidMain/kotlin/istick/app/beta/storage/MySqlStorageRepository.kt
 package istick.app.beta.storage
 
 import android.content.Context
@@ -14,19 +14,23 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.UUID
 
-actual class MySqlStorageRepository actual constructor(private val context: Context) : StorageRepository {
+actual class MySqlStorageRepository actual constructor(private val context: Any) : StorageRepository {
     private val TAG = "MySqlStorageRepository"
+
+    // Cast to Android Context
+    private val androidContext: Context
+        get() = context as Context
 
     // Directory for saving images locally
     private val imagesDir: File by lazy {
-        File(context.filesDir, "images").apply {
+        File(androidContext.filesDir, "images").apply {
             if (!exists()) {
                 mkdirs()
             }
         }
     }
 
-    override suspend fun uploadImage(imageBytes: ByteArray, fileName: String): Result<String> = withContext(Dispatchers.IO) {
+    actual override suspend fun uploadImage(imageBytes: ByteArray, fileName: String): Result<String> = withContext(Dispatchers.IO) {
         try {
             // Compress the image to save space
             val compressedBytes = compressImage(imageBytes, 80)
@@ -77,7 +81,7 @@ actual class MySqlStorageRepository actual constructor(private val context: Cont
         }
     }
 
-    override suspend fun getImageUrl(path: String): Result<String> = withContext(Dispatchers.IO) {
+    actual override suspend fun getImageUrl(path: String): Result<String> = withContext(Dispatchers.IO) {
         try {
             // If path is already a URL or file path, return it
             if (path.startsWith("http") || path.startsWith("file")) {
@@ -116,7 +120,7 @@ actual class MySqlStorageRepository actual constructor(private val context: Cont
         }
     }
 
-    override suspend fun getUserImages(userId: String): Result<List<String>> = withContext(Dispatchers.IO) {
+    actual override suspend fun getUserImages(userId: String): Result<List<String>> = withContext(Dispatchers.IO) {
         try {
             // Try to fetch from database
             try {
@@ -152,7 +156,7 @@ actual class MySqlStorageRepository actual constructor(private val context: Cont
         }
     }
 
-    override suspend fun deleteImage(path: String): Result<Boolean> = withContext(Dispatchers.IO) {
+    actual override suspend fun deleteImage(path: String): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
             // Extract file name from path
             val fileName = path.substringAfterLast("/")
@@ -197,6 +201,7 @@ actual class MySqlStorageRepository actual constructor(private val context: Cont
     }
 }
 
+// Move the actual implementation of compressImage here to avoid duplication
 actual fun compressImage(imageBytes: ByteArray, quality: Int): ByteArray {
     val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
     val outputStream = ByteArrayOutputStream()

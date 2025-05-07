@@ -1,184 +1,146 @@
+// File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/repository/OptimizedOffersRepository.kt
 package istick.app.beta.repository
 
 import istick.app.beta.model.Campaign
-import istick.app.beta.model.CampaignStatus
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import istick.app.beta.network.ApiClient
+import istick.app.beta.network.NetworkResult
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
-open class OptimizedOffersRepository : OffersRepositoryInterface {
-    private val _cachedOffers = MutableStateFlow<List<Campaign>>(emptyList())
-    val cachedOffers: StateFlow<List<Campaign>> = _cachedOffers
+/**
+ * An optimized repository implementation for campaigns/offers
+ * This implementation communicates with the real backend API
+ */
+class OptimizedOffersRepository(
+    private val apiClient: ApiClient
+) : OffersRepositoryInterface {
+    // Cache for offers data
+    private val offersCache = mutableListOf<Campaign>()
+    private var hasMoreOffers = true
+    private var currentPage = 0
+    private val offersPerPage = 10
 
-    private val _hasMorePages = MutableStateFlow(true)
-    val hasMorePages: StateFlow<Boolean> = _hasMorePages
-
-    // Cache for storing fetched offers
-    protected val cache = mutableMapOf<String, Campaign>()
-
-    // Timestamp of last refresh to limit frequent updates
-    private var lastRefreshTimestamp = 0L
+    // Cached offer details
+    private val offerDetailsCache = mutableMapOf<String, Campaign>()
 
     /**
-     * Get offers with pagination support.
-     * First loads from cache if available, then updates from the backend.
+     * Get offers with pagination
      */
-    override fun getOffers(onSuccess: (List<Campaign>) -> Unit, onError: (Exception) -> Unit) {
-        // For demo purpose, return mock data
-        if (_cachedOffers.value.isNotEmpty()) {
-            onSuccess(_cachedOffers.value)
-            return
-        }
+    override suspend fun getOffers(onSuccess: (List<Campaign>) -> Unit, onError: (Exception) -> Unit) {
+        // Reset pagination when getting offers from the beginning
+        currentPage = 0
+        hasMoreOffers = true
+        offersCache.clear()
 
-        try {
-            // Mock data for now
-            val mockOffers = listOf(
-                Campaign(
-                    id = "offer1",
-                    brandId = "brand1",
-                    title = "TechCorp Promotional Campaign",
-                    description = "Promote our tech products on your car",
-                    status = CampaignStatus.ACTIVE,
-                    payment = istick.app.beta.model.PaymentDetails(
-                        amount = 500.0,
-                        currency = "RON"
-                    )
-                ),
-                Campaign(
-                    id = "offer2",
-                    brandId = "brand2",
-                    title = "EcoFriendly Campaign",
-                    description = "Promote eco-friendly products",
-                    status = CampaignStatus.ACTIVE,
-                    payment = istick.app.beta.model.PaymentDetails(
-                        amount = 450.0,
-                        currency = "RON"
-                    )
-                ),
-                Campaign(
-                    id = "offer3",
-                    brandId = "brand3",
-                    title = "Local Business Promotion",
-                    description = "Support local businesses with your car",
-                    status = CampaignStatus.ACTIVE,
-                    payment = istick.app.beta.model.PaymentDetails(
-                        amount = 400.0,
-                        currency = "RON"
-                    )
-                )
-            )
+        withContext(Dispatchers.IO) {
+            try {
+                // Make API call to get campaigns
+                when (val result = apiClient.getCampaigns(page = 0, pageSize = offersPerPage)) {
+                    is NetworkResult.Success -> {
+                        val campaigns = result.data
 
-            // Update cache
-            mockOffers.forEach { offer ->
-                cache[offer.id] = offer
+                        // Cache results
+                        offersCache.addAll(campaigns)
+
+                        // Update pagination state
+                        hasMoreOffers = campaigns.size >= offersPerPage
+                        currentPage++
+
+                        onSuccess(campaigns)
+                    }
+                    is NetworkResult.Error -> {
+                        onError(Exception(result.message))
+                    }
+                    is NetworkResult.Loading -> {
+                        // Do nothing, wait for the result
+                    }
+                }
+            } catch (e: Exception) {
+                onError(e)
             }
-
-            _cachedOffers.value = mockOffers
-            lastRefreshTimestamp = System.currentTimeMillis()
-
-            onSuccess(mockOffers)
-        } catch (e: Exception) {
-            onError(e)
         }
     }
 
     /**
-     * Load the next page of offers.
+     * Get next page of offers
      */
-    override fun getNextOffersPage(onSuccess: (List<Campaign>, Boolean) -> Unit, onError: (Exception) -> Unit) {
-        if (!_hasMorePages.value) {
+    override suspend fun getNextOffersPage(onSuccess: (List<Campaign>, Boolean) -> Unit, onError: (Exception) -> Unit) {
+        if (!hasMoreOffers) {
             onSuccess(emptyList(), false)
             return
         }
 
-        try {
-            // Mock next page data
-            val newOffers = listOf(
-                Campaign(
-                    id = "offer4",
-                    brandId = "brand4",
-                    title = "Fitness Promotion",
-                    description = "Promote fitness products with your car",
-                    status = CampaignStatus.ACTIVE,
-                    payment = istick.app.beta.model.PaymentDetails(
-                        amount = 550.0,
-                        currency = "RON"
-                    )
-                ),
-                Campaign(
-                    id = "offer5",
-                    brandId = "brand5",
-                    title = "Coffee Shop Ads",
-                    description = "Promote local coffee shops",
-                    status = CampaignStatus.ACTIVE,
-                    payment = istick.app.beta.model.PaymentDetails(
-                        amount = 350.0,
-                        currency = "RON"
-                    )
-                )
-            )
+        withContext(Dispatchers.IO) {
+            try {
+                // Make API call to get next page of campaigns
+                when (val result = apiClient.getCampaigns(page = currentPage, pageSize = offersPerPage)) {
+                    is NetworkResult.Success -> {
+                        val campaigns = result.data
 
-            // Update cache
-            newOffers.forEach { offer ->
-                cache[offer.id] = offer
+                        // Cache results
+                        offersCache.addAll(campaigns)
+
+                        // Update pagination state
+                        hasMoreOffers = campaigns.size >= offersPerPage
+                        currentPage++
+
+                        onSuccess(campaigns, hasMoreOffers)
+                    }
+                    is NetworkResult.Error -> {
+                        onError(Exception(result.message))
+                    }
+                    is NetworkResult.Loading -> {
+                        // Do nothing, wait for the result
+                    }
+                }
+            } catch (e: Exception) {
+                onError(e)
             }
-
-            // No more pages after this demonstration
-            val hasMore = false
-            _hasMorePages.value = hasMore
-
-            onSuccess(newOffers, hasMore)
-        } catch (e: Exception) {
-            onError(e)
         }
     }
 
     /**
-     * Get details for a specific offer.
+     * Get details for a specific offer
      */
-    override fun getOfferDetails(offerId: String, onSuccess: (Campaign) -> Unit, onError: (Exception) -> Unit) {
+    override suspend fun getOfferDetails(offerId: String, onSuccess: (Campaign) -> Unit, onError: (Exception) -> Unit) {
         // Check cache first
-        cache[offerId]?.let {
+        offerDetailsCache[offerId]?.let {
             onSuccess(it)
             return
         }
 
-        try {
-            // Mock data for a specific offer
-            val offer = Campaign(
-                id = offerId,
-                brandId = "brand1",
-                title = "Special Campaign",
-                description = "This is a detailed description of the campaign",
-                status = CampaignStatus.ACTIVE,
-                payment = istick.app.beta.model.PaymentDetails(
-                    amount = 500.0,
-                    currency = "RON"
-                )
-            )
+        withContext(Dispatchers.IO) {
+            try {
+                // Make API call to get campaign details
+                when (val result = apiClient.getCampaignDetails(campaignId = offerId)) {
+                    is NetworkResult.Success -> {
+                        val campaign = result.data
 
-            // Update cache
-            cache[offerId] = offer
+                        // Cache the result
+                        offerDetailsCache[offerId] = campaign
 
-            onSuccess(offer)
-        } catch (e: Exception) {
-            onError(e)
+                        onSuccess(campaign)
+                    }
+                    is NetworkResult.Error -> {
+                        onError(Exception(result.message))
+                    }
+                    is NetworkResult.Loading -> {
+                        // Do nothing, wait for the result
+                    }
+                }
+            } catch (e: Exception) {
+                onError(e)
+            }
         }
     }
 
     /**
-     * Refresh the cache in the background.
-     */
-    private fun refreshOffersInBackground() {
-        // This would normally fetch fresh data from the backend
-        // For now, we'll just skip implementation
-    }
-
-    /**
-     * Clear the cache and fetch fresh data.
+     * Clear caches
      */
     override fun clearCache() {
-        cache.clear()
-        _cachedOffers.value = emptyList()
-        _hasMorePages.value = true
+        offersCache.clear()
+        offerDetailsCache.clear()
+        currentPage = 0
+        hasMoreOffers = true
     }
 }

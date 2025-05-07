@@ -28,7 +28,7 @@ import istick.app.beta.utils.Preferences
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-
+import androidx.compose.ui.text.font.FontWeight
 // Update AppState to include INITIALIZATION and ERROR states
 enum class AppState {
     INITIALIZATION,

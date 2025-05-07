@@ -1,8 +1,10 @@
-// Fixed version with only one _paymentService declaration
+// File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/di/DependencyInjection.kt
 package istick.app.beta.di
 
 import istick.app.beta.auth.AuthRepository
 import istick.app.beta.auth.DefaultAuthRepository
+import istick.app.beta.network.ApiClient
+import istick.app.beta.network.MySqlApiClient
 import istick.app.beta.repository.*
 import istick.app.beta.storage.StorageRepository
 import istick.app.beta.utils.PerformanceMonitor
@@ -39,19 +41,22 @@ object DependencyInjection {
         MySqlCarRepository()
     }
 
+    private val _apiClient: ApiClient by lazy {
+        MySqlApiClient(_authRepository, getStorageRepository())
+    }
+
     private val _campaignRepository: CampaignRepository by lazy {
         DefaultCampaignRepository(_authRepository)
     }
 
-    val offersRepository: OptimizedOffersRepository by lazy {
-        RepositoryFactory.getOffersRepository()
+    val offersRepository: OffersRepositoryInterface by lazy {
+        OptimizedOffersRepository(_apiClient)
     }
 
     val mySqlOffersRepository: MySqlOffersRepository by lazy {
-        RepositoryFactory.getMySqlOffersRepository()
+        MySqlOffersRepository()
     }
 
-    // FIXED: only one payment service declaration
     private val _paymentService: PaymentService by lazy {
         MySqlPaymentService()
     }
@@ -93,6 +98,9 @@ object DependencyInjection {
         this.ocrProcessor = ocrProcessor
         this.performanceMonitor = performanceMonitor
         this.storageRepository = storageRepository
+
+        // Initialize the repository factory as well
+        RepositoryFactory.initialize(_authRepository, storageRepository)
     }
 
     fun initRepositories() {
@@ -126,6 +134,7 @@ object DependencyInjection {
         performanceMonitor = null
         storageRepository = null
         platformContext = null
+        RepositoryFactory.reset()
     }
 
     fun getAuthRepository(): AuthRepository = _authRepository
@@ -137,6 +146,8 @@ object DependencyInjection {
     fun getCarRepository(): CarRepository = _carRepository
 
     fun getCampaignRepository(): CampaignRepository = _campaignRepository
+
+    fun getApiClient(): ApiClient = _apiClient
 
     fun getPaymentService(): PaymentService = _paymentService
 

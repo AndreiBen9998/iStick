@@ -1,27 +1,25 @@
-// File: iStick/composeApp/src/commonMain/kotlin/istick/app/beta/di/DependencyInjection.kt
 package istick.app.beta.di
 
+import android.content.Context
 import istick.app.beta.auth.AuthRepository
-import istick.app.beta.auth.DefaultAuthRepository
-import istick.app.beta.network.ApiClient
-import istick.app.beta.network.MySqlApiClient
+import istick.app.beta.auth.RoomAuthRepository
+import istick.app.beta.database.AppDatabase
+import istick.app.beta.network.NetworkMonitor
+import istick.app.beta.ocr.OcrProcessor
 import istick.app.beta.repository.*
 import istick.app.beta.storage.StorageRepository
 import istick.app.beta.utils.PerformanceMonitor
-import istick.app.beta.network.NetworkMonitor
 import istick.app.beta.analytics.AnalyticsManager
-import istick.app.beta.ocr.OcrProcessor
 import istick.app.beta.payment.PaymentService
-import istick.app.beta.payment.MySqlPaymentService
+import istick.app.beta.payment.DefaultPaymentService
 import istick.app.beta.ui.navigation.AppNavigator
-import istick.app.beta.viewmodel.PaymentViewModel
-import istick.app.beta.viewmodel.ViewModelFactory
 
 object DependencyInjection {
     // Platform-specific dependencies
     @Volatile
-    private var platformContext: Any? = null
+    private var platformContext: Context? = null
 
+    private var database: AppDatabase? = null
     private var networkMonitor: NetworkMonitor? = null
     private var analyticsManager: AnalyticsManager? = null
     private var ocrProcessor: OcrProcessor? = null
@@ -30,39 +28,23 @@ object DependencyInjection {
 
     // Core repositories
     private val _authRepository: AuthRepository by lazy {
-        DefaultAuthRepository()
+        RoomAuthRepository(getDatabase())
     }
 
     private val _userRepository: UserRepository by lazy {
-        MySqlUserRepository(_authRepository)
+        RoomUserRepository(_authRepository, getDatabase())
     }
 
     private val _carRepository: CarRepository by lazy {
-        MySqlCarRepository()
-    }
-
-    private val _apiClient: ApiClient by lazy {
-        MySqlApiClient(_authRepository, getStorageRepository())
+        RoomCarRepository(getDatabase())
     }
 
     private val _campaignRepository: CampaignRepository by lazy {
-        DefaultCampaignRepository(_authRepository)
-    }
-
-    val offersRepository: OffersRepositoryInterface by lazy {
-        OptimizedOffersRepository(_apiClient)
-    }
-
-    val mySqlOffersRepository: MySqlOffersRepository by lazy {
-        MySqlOffersRepository()
+        RoomCampaignRepository(_authRepository, getDatabase())
     }
 
     private val _paymentService: PaymentService by lazy {
-        MySqlPaymentService()
-    }
-
-    val offlineRepositoryWrapper: OfflineRepositoryWrapper? by lazy {
-        networkMonitor?.let { OfflineRepositoryWrapper(it) }
+        DefaultPaymentService()
     }
 
     private val _appNavigator: AppNavigator by lazy {
@@ -71,21 +53,24 @@ object DependencyInjection {
             userRepository = _userRepository,
             campaignRepository = _campaignRepository,
             carRepository = _carRepository,
-            storageRepository = storageRepository ?: throw IllegalStateException("StorageRepository not initialized"),
+            storageRepository = getStorageRepository(),
             performanceMonitor = getPerformanceMonitor()
         )
     }
 
     @Synchronized
-    fun setPlatformContext(context: Any) {
-        platformContext = context
+    fun setPlatformContext(context: Context) {
+        platformContext = context.applicationContext
     }
 
     @Synchronized
-    fun getPlatformContext(): Any? = platformContext
+    fun getPlatformContext(): Context {
+        return platformContext ?: throw IllegalStateException("Platform context not initialized")
+    }
 
     fun initPlatformDependencies(
-        context: Any,
+        context: Context,
+        database: AppDatabase,
         networkMonitor: NetworkMonitor,
         analyticsManager: AnalyticsManager,
         ocrProcessor: OcrProcessor,
@@ -93,6 +78,7 @@ object DependencyInjection {
         storageRepository: StorageRepository
     ) {
         setPlatformContext(context)
+        this.database = database
         this.networkMonitor = networkMonitor
         this.analyticsManager = analyticsManager
         this.ocrProcessor = ocrProcessor
@@ -100,11 +86,15 @@ object DependencyInjection {
         this.storageRepository = storageRepository
 
         // Initialize the repository factory as well
-        RepositoryFactory.initialize(_authRepository, storageRepository)
+        RepositoryFactory.initialize(_authRepository, storageRepository, database)
     }
 
     fun initRepositories() {
-        // Repository initialization
+        // Any additional repository initialization can go here
+    }
+
+    fun getDatabase(): AppDatabase {
+        return database ?: throw IllegalStateException("Database not initialized")
     }
 
     fun getStorageRepository(): StorageRepository {
@@ -128,33 +118,21 @@ object DependencyInjection {
     }
 
     fun cleanup() {
+        networkMonitor?.stopMonitoring()
         networkMonitor = null
         analyticsManager = null
         ocrProcessor = null
         performanceMonitor = null
         storageRepository = null
+        database = null
         platformContext = null
         RepositoryFactory.reset()
     }
 
     fun getAuthRepository(): AuthRepository = _authRepository
-
     fun getUserRepository(): UserRepository = _userRepository
-
     fun getAppNavigator(): AppNavigator = _appNavigator
-
     fun getCarRepository(): CarRepository = _carRepository
-
     fun getCampaignRepository(): CampaignRepository = _campaignRepository
-
-    fun getApiClient(): ApiClient = _apiClient
-
     fun getPaymentService(): PaymentService = _paymentService
-
-    fun createPaymentViewModel(): PaymentViewModel {
-        return ViewModelFactory.createPaymentViewModel(
-            authRepository = getAuthRepository(),
-            paymentService = getPaymentService()
-        )
-    }
 }

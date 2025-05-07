@@ -1,8 +1,3 @@
-// File: iStick/composeApp/build.gradle.kts
-
-import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
-import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinAndroidTarget
-
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidApplication)
@@ -45,7 +40,6 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtime.compose)
             implementation("androidx.compose.material:material-icons-extended:1.6.0")
 
-
             // Coroutines
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")
@@ -57,15 +51,15 @@ kotlin {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
 
-            // Firebase Android
-
-
-            // Room
+            // Room Database
             implementation("androidx.room:room-runtime:2.6.1")
             implementation("androidx.room:room-ktx:2.6.1")
 
+            // ML Kit for OCR
+            implementation("com.google.mlkit:text-recognition:16.0.0")
 
-
+            // GSON for type conversions
+            implementation("com.google.code.gson:gson:2.10.1")
         }
 
         androidMain {
@@ -111,9 +105,9 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     debugImplementation(compose.uiTooling)
     implementation("androidx.activity:activity-compose:1.8.0")
-    implementation("com.google.mlkit:text-recognition:16.0.0")
-    implementation("mysql:mysql-connector-java:8.0.33")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+
+    // Remove JDBC dependencies
+    // implementation("mysql:mysql-connector-java:8.0.33")
 }
 
 configurations.all {
